@@ -1,7 +1,7 @@
 //
 
 //
-/// \file B1/include/EventAction.hh
+/// \file Test/include/EventAction.hh
 /// \brief Definition of the B1::EventAction class
 
 #ifndef B1EventAction_h

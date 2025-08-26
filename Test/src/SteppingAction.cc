@@ -1,7 +1,7 @@
 //
 
 //
-/// \file B1/src/SteppingAction.cc
+/// \file Test/src/SteppingAction.cc
 /// \brief Implementation of the B1::SteppingAction class
 
 #include "SteppingAction.hh"

@@ -1,11 +1,11 @@
 //
 
 //
-/// \file B1/src/DetectorConstruction.cc
+/// \file Test/src/DetectorConstruction.cc
 /// \brief Implementation of the B1::DetectorConstruction class
 
 #include "DetectorConstruction.hh"
-
+#include "SimConfig.hh"
 #include "G4RunManager.hh"
 #include "G4NistManager.hh"
 #include "G4Box.hh"
@@ -25,31 +25,24 @@
 namespace Test
 {
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
 G4VPhysicalVolume* DetectorConstruction::Construct()
 {
+  // Centralized config
+  auto& cfg = SimConfig::Get();
+  auto& geom   = cfg.geom;
+  auto& o   = cfg.opt;
+
   // Get nist material manager
   G4NistManager* nist = G4NistManager::Instance();
 
   // Option to switch on/off checking of volumes overlaps
-  //
   G4bool checkOverlaps = true;
 
   //
-  // Dimensions for mini-TPC
+  // World (size derives from geometry)
   //
-  G4double lxe_radius = 30*cm;
-  G4double lxe_height = 50*cm;
-  G4double gxe_height = 3*cm;
-  G4double wall_thick = 1*cm;
-  G4double pmt_thick  = 2*mm;
-
-  //
-  // World
-  //
-  G4double world_sizeXY = 1.2 * (2*(lxe_radius + wall_thick) + 20*cm);
-  G4double world_sizeZ  = 1.2 * (lxe_height + gxe_height + 2*pmt_thick + 20*cm);
+  G4double world_sizeXY = 1.2 * (2*(geom.lxe_radius + geom.wall_thick) + 20*cm);
+  G4double world_sizeZ  = 1.2 * (geom.lxe_height + geom.gxe_height + 2*geom.pmt_thick + 20*cm);
   G4Material* world_mat = nist->FindOrBuildMaterial("G4_AIR");
 
   auto solidWorld = new G4Box("World",
@@ -69,7 +62,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   // Gaseous xenon (NIST)
   G4Material* gxe_mat = nist->FindOrBuildMaterial("G4_Xe");
 
-  // PTFE (Teflon) as structural wall (optical surface will be added later if desired)
+  // PTFE (Teflon) as structural wall (optical surface can be added later)
   G4Material* ptfe_mat = nist->FindOrBuildMaterial("G4_TEFLON");
 
   // PMT window proxy (quartz/fused silica)
@@ -78,32 +71,26 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   //
   // Minimal optical/scintillation properties for LXe (S1 production)
   //
-  {
+  if (cfg.opt.enable_optics) {
     auto* mpt = new G4MaterialPropertiesTable();
 
     // Photon energy grid around ~178 nm (~7.0 eV)
     const G4int N = 2;
-    G4double E[N] = {6.8*eV, 7.2*eV};
-
-    // Index of refraction ~1.69 (flat placeholder)
-    G4double RIndex[N]   = {1.69, 1.69};
-    // Absorption length placeholder (depends on purity)
-    G4double AbsLen[N]   = {10.*m, 10.*m};
-    // Rayleigh scattering placeholder (~30 cm)
-    G4double Rayleigh[N] = {30.*cm, 30.*cm};
-    // Scintillation spectrum (flat unit spectrum)
+    G4double E[N]        = {o.eV_min, o.eV_max};
+    G4double RIndex[N]   = {o.rindex, o.rindex};
+    G4double AbsLen[N]   = {o.abs_length, o.abs_length};
+    G4double Rayleigh[N] = {o.rayleigh_length, o.rayleigh_length};
     G4double FastComp[N] = {1.0, 1.0};
 
-    mpt->AddProperty("RINDEX",         E, RIndex,   N, true);
-    mpt->AddProperty("ABSLENGTH",      E, AbsLen,   N, true);
-    mpt->AddProperty("RAYLEIGH",       E, Rayleigh, N, true);
-    mpt->AddProperty("FASTCOMPONENT",  E, FastComp, N, true);
+    mpt->AddProperty("RINDEX",        E, RIndex,   N, true);
+    mpt->AddProperty("ABSLENGTH",     E, AbsLen,   N, true);
+    mpt->AddProperty("RAYLEIGH",      E, Rayleigh, N, true);
+    mpt->AddProperty("FASTCOMPONENT", E, FastComp, N, true);
 
-    // Yields/timings (placeholders; tune later)
-    mpt->AddConstProperty("SCINTILLATIONYIELD", 42000./MeV , true);
-    mpt->AddConstProperty("RESOLUTIONSCALE",    1.0, true);
-    mpt->AddConstProperty("FASTTIMECONSTANT",   2.2*ns, true);
-    mpt->AddConstProperty("YIELDRATIO",         1.0, true); // all fast
+    mpt->AddConstProperty("SCINTILLATIONYIELD", o.scint_yield_perMeV, true);
+    mpt->AddConstProperty("RESOLUTIONSCALE",    1.0,                  true);
+    mpt->AddConstProperty("FASTTIMECONSTANT",   o.scint_fast_time,    true);
+    mpt->AddConstProperty("YIELDRATIO",         o.scint_yield_ratio,  true);
 
     lxe_mat->SetMaterialPropertiesTable(mpt);
   }
@@ -111,8 +98,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   //
   // LXe active volume (central cylinder)
   //
-  auto solidLXe = new G4Tubs("LXeSolid", 0.*cm, lxe_radius,
-                             0.5*lxe_height, 0.*deg, 360.*deg);
+  auto solidLXe = new G4Tubs("LXeSolid", 0.*cm, geom.lxe_radius,
+                             0.5*geom.lxe_height, 0.*deg, 360.*deg);
   auto logicLXe = new G4LogicalVolume(solidLXe, lxe_mat, "LXe");
 
   new G4PVPlacement(nullptr, G4ThreeVector(0,0,0),
@@ -121,44 +108,44 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   //
   // GXe pocket (thin cylinder above LXe)
   //
-  auto solidGXe = new G4Tubs("GXeSolid", 0.*cm, lxe_radius,
-                             0.5*gxe_height, 0.*deg, 360.*deg);
+  auto solidGXe = new G4Tubs("GXeSolid", 0.*cm, geom.lxe_radius,
+                             0.5*geom.gxe_height, 0.*deg, 360.*deg);
   auto logicGXe = new G4LogicalVolume(solidGXe, gxe_mat, "GXe");
 
   new G4PVPlacement(nullptr,
-    G4ThreeVector(0,0, 0.5*lxe_height + 0.5*gxe_height),
+    G4ThreeVector(0,0, 0.5*geom.lxe_height + 0.5*geom.gxe_height),
     logicGXe, "GXe", logicWorld, false, 0, checkOverlaps);
 
   //
   // PTFE wall (hollow cylindrical shell surrounding LXe + GXe)
   //
   auto solidWall = new G4Tubs("PTFEWallSolid",
-    lxe_radius, lxe_radius + wall_thick,
-    0.5 * (lxe_height + gxe_height), 0.*deg, 360.*deg);
+    geom.lxe_radius, geom.lxe_radius + geom.wall_thick,
+    0.5 * (geom.lxe_height + geom.gxe_height), 0.*deg, 360.*deg);
 
   auto logicWall = new G4LogicalVolume(solidWall, ptfe_mat, "PTFEWall");
 
   new G4PVPlacement(nullptr,
-    G4ThreeVector(0,0, 0.5*gxe_height),
+    G4ThreeVector(0,0, 0.5*geom.gxe_height),
     logicWall, "PTFEWall", logicWorld, false, 0, checkOverlaps);
 
   //
   // PMT planes (top & bottom) as thin disks
   //
-  auto solidTopPMT = new G4Tubs("TopPMTSolid", 0.*cm, lxe_radius,
-                                0.5*pmt_thick, 0.*deg, 360.*deg);
+  auto solidTopPMT = new G4Tubs("TopPMTSolid", 0.*cm, geom.lxe_radius,
+                                0.5*geom.pmt_thick, 0.*deg, 360.*deg);
   auto logicTopPMT = new G4LogicalVolume(solidTopPMT, pmt_mat, "TopPMT");
 
   new G4PVPlacement(nullptr,
-    G4ThreeVector(0,0, 0.5*lxe_height + gxe_height + 0.5*pmt_thick),
+    G4ThreeVector(0,0, 0.5*geom.lxe_height + geom.gxe_height + 0.5*geom.pmt_thick),
     logicTopPMT, "TopPMT", logicWorld, false, 0, checkOverlaps);
 
-  auto solidBotPMT = new G4Tubs("BottomPMTSolid", 0.*cm, lxe_radius,
-                                0.5*pmt_thick, 0.*deg, 360.*deg);
+  auto solidBotPMT = new G4Tubs("BottomPMTSolid", 0.*cm, geom.lxe_radius,
+                                0.5*geom.pmt_thick, 0.*deg, 360.*deg);
   auto logicBotPMT = new G4LogicalVolume(solidBotPMT, pmt_mat, "BottomPMT");
 
   new G4PVPlacement(nullptr,
-    G4ThreeVector(0,0, -(0.5*lxe_height + 0.5*pmt_thick)),
+    G4ThreeVector(0,0, -(0.5*geom.lxe_height + 0.5*geom.pmt_thick)),
     logicBotPMT, "BottomPMT", logicWorld, false, 0, checkOverlaps);
 
   //
@@ -187,14 +174,9 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   visBot->SetForceSolid(true);
   logicBotPMT->SetVisAttributes(visBot);
 
-  //
-  // Set the scoring volume (useful for actions; here we use LXe)
-  //
+  // Scoring volume
   fScoringVolume = logicLXe;
 
-  //
-  // always return the physical World
-  //
   return physWorld;
 }
 
@@ -208,7 +190,6 @@ void DetectorConstruction::ConstructSDandField()
   auto* pmtSD = new Test::PMTSensitiveDetector("PMTSD");
   sdman->AddNewDetector(pmtSD);
 
-  // Attach SD to PMT logical volumes by name
   auto* topLV = G4LogicalVolumeStore::GetInstance()->GetVolume("TopPMT");
   auto* botLV = G4LogicalVolumeStore::GetInstance()->GetVolume("BottomPMT");
 

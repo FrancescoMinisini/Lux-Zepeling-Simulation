@@ -1,5 +1,5 @@
 //
-/// \file B1/Test.cc
+/// \file Test/Test.cc
 /// \brief Main program of the B1 application
 
 #include "DetectorConstruction.hh"

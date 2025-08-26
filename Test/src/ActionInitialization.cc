@@ -1,7 +1,7 @@
 //
 
 //
-/// \file B1/src/ActionInitialization.cc
+/// \file Test/src/ActionInitialization.cc
 /// \brief Implementation of the B1::ActionInitialization class
 
 #include "ActionInitialization.hh"

@@ -1,7 +1,7 @@
 //
 
 //
-/// \file B1/src/RunAction.cc
+/// \file Test/src/RunAction.cc
 /// \brief Implementation of the B1::RunAction class
 
 #include "RunAction.hh"

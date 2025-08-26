@@ -1,7 +1,7 @@
 //
 
 //
-/// \file B1/src/EventAction.cc
+/// \file Test/src/EventAction.cc
 /// \brief Implementation of the B1::EventAction class
 
 #include "EventAction.hh"

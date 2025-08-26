@@ -1,5 +1,5 @@
 
-///\file "B1/.README.txt"
+///\file "Test/.README.txt"
 ///\brief Example B1 README page
 
 /*! \page ExampleB1 Example %B1

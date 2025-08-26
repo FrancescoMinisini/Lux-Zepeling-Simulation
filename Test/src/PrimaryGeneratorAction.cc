@@ -1,7 +1,12 @@
 //
 
 //
+/// \file Test/src/PrimaryGeneratorAction.cc
+/// \brief Implementation of the B1::PrimaryGeneratorAction class
+
 #include "PrimaryGeneratorAction.hh"
+
+#include "SimConfig.hh"
 
 #include "G4LogicalVolumeStore.hh"
 #include "G4LogicalVolume.hh"
@@ -13,7 +18,7 @@
 #include "G4SystemOfUnits.hh"
 #include "Randomize.hh"
 
-// --- added for Xe nuclear recoils (WIMP-like proxy)
+// for ions
 #include "G4IonTable.hh"
 #include "G4ThreeVector.hh"
 #include "G4PhysicalConstants.hh"
@@ -22,7 +27,6 @@ namespace Test
 {
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
 // PrimaryGeneratorAction::PrimaryGeneratorAction()
 // {
 //   // number of primaries per event
@@ -46,9 +50,9 @@ namespace Test
 
 PrimaryGeneratorAction::PrimaryGeneratorAction()
 {
-  fParticleGun = new G4ParticleGun(1);
+  fParticleGun  = new G4ParticleGun(1);
 
-  // Set a temporary safe particle (gamma) — will be replaced per event.
+  // Safe placeholder; real definition set per event
   auto* gamma = G4ParticleTable::GetParticleTable()->FindParticle("gamma");
   fParticleGun->SetParticleDefinition(gamma);
   fParticleGun->SetParticleEnergy(10.*keV);
@@ -56,72 +60,67 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
   fParticleGun->SetParticlePosition({0,0,0});
 }
 
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
 PrimaryGeneratorAction::~PrimaryGeneratorAction()
 {
   delete fParticleGun;
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 {
-  // this function is called at the beginning of each event
-  // Here we sample directly inside the LXe cylinder we defined
-  // in DetectorConstruction (radius = 30 cm, height = 50 cm).
+  auto& cfg  = SimConfig::Get();
+  auto& g    = cfg.geom;
+  auto& gen  = cfg.gen;
 
-  // Ensure ion definition exists (workers are initialized now)
-  const G4int Z = 54, A = 131;
-  auto* ion = G4IonTable::GetIonTable()->GetIon(Z, A, 0.*keV);
+  if (gen.use_wimp_proxy) {
+    // Ensure ion definition exists
+    auto* ion = G4IonTable::GetIonTable()->GetIon(gen.ion_Z, gen.ion_A, 0.*keV);
 
-  if (ion) {
-    fParticleGun->SetParticleDefinition(ion);
-    fParticleGun->SetParticleCharge(0.*eplus);
+    if (ion) {
+      fParticleGun->SetParticleDefinition(ion);
+      fParticleGun->SetParticleCharge(0.*eplus);
 
-    G4cout << "-------- Succesfully used ION ----------" << G4endl;
+      // --- Sample position uniformly in the LXe cylinder
+      const G4double R = g.lxe_radius;
+      const G4double H = g.lxe_height;
 
+      G4double u   = G4UniformRand();
+      G4double r   = R * std::sqrt(u);
+      G4double phi = 2.*pi * G4UniformRand();
+      G4double x0  = r * std::cos(phi);
+      G4double y0  = r * std::sin(phi);
+      G4double z0  = (G4UniformRand() - 0.5) * H;
+      fParticleGun->SetParticlePosition(G4ThreeVector(x0,y0,z0));
+
+      // --- Isotropic direction
+      G4double cost  = 2.*G4UniformRand() - 1.;
+      G4double sint  = std::sqrt(1. - cost*cost);
+      G4double phiD  = 2.*pi * G4UniformRand();
+      fParticleGun->SetParticleMomentumDirection(
+        G4ThreeVector(sint*std::cos(phiD), sint*std::sin(phiD), cost));
+
+      // --- Flat energy in [Emin, Emax]
+      G4double Enr = gen.E_min + (gen.E_max - gen.E_min)*G4UniformRand();
+      fParticleGun->SetParticleEnergy(Enr);
+    } else {
+      // Fallback to gamma if ion somehow not ready
+      auto* gamma = G4ParticleTable::GetParticleTable()->FindParticle("gamma");
+      fParticleGun->SetParticleDefinition(gamma);
+      fParticleGun->SetParticleEnergy(gen.gamma_energy);
+      fParticleGun->SetParticlePosition(gen.gamma_position);
+      fParticleGun->SetParticleMomentumDirection(gen.gamma_direction);
+    }
   } else {
-    // Fallback: if ion not ready for some reason, use gamma so we don’t crash
+    // Gamma calibration mode from config
     auto* gamma = G4ParticleTable::GetParticleTable()->FindParticle("gamma");
     fParticleGun->SetParticleDefinition(gamma);
-        G4cout << "-------- UnSuccesfully used ION ----------" << G4endl;
+    fParticleGun->SetParticleEnergy(gen.gamma_energy);
+    fParticleGun->SetParticlePosition(gen.gamma_position);
+    fParticleGun->SetParticleMomentumDirection(gen.gamma_direction);
   }
 
-
-  // --- Geometry parameters of the LXe active volume (keep in sync with DetectorConstruction)
-  const G4double rTPC = 30.*cm;
-  const G4double hLXe = 50.*cm;
-
-  // --- 1) Sample a position uniformly inside a cylinder
-  // radial pdf ~ r (uniform in area): r = R * sqrt(u), phi in [0, 2pi)
-  G4double u   = G4UniformRand();
-  G4double r   = rTPC * std::sqrt(u);
-  G4double phi = 2.*pi * G4UniformRand();
-  G4double x0  = r * std::cos(phi);
-  G4double y0  = r * std::sin(phi);
-  G4double z0  = (G4UniformRand() - 0.5) * hLXe;  // uniform in [-h/2, +h/2]
-
-  fParticleGun->SetParticlePosition(G4ThreeVector(x0,y0,z0));
-
-  // --- 2) Sample an isotropic recoil direction
-  G4double cost  = 2.*G4UniformRand() - 1.;
-  G4double sint  = std::sqrt(1. - cost*cost);
-  G4double phiD  = 2.*pi * G4UniformRand();
-  G4ThreeVector dir(sint*std::cos(phiD), sint*std::sin(phiD), cost);
-  fParticleGun->SetParticleMomentumDirection(dir);
-
-  // --- 3) Sample a nuclear-recoil energy in [1, 30] keV_nr (toy flat spectrum)
-  G4double Emin = 1.*keV;
-  G4double Emax = 30.*keV;
-  G4double Enr  = Emin + (Emax - Emin) * G4UniformRand();
-  fParticleGun->SetParticleEnergy(Enr);
-
-  // fire the primary
   fParticleGun->GeneratePrimaryVertex(anEvent);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-}
+} // namespace Test

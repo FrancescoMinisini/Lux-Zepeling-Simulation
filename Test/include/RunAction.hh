@@ -1,7 +1,7 @@
 //
 
 //
-/// \file B1/include/RunAction.hh
+/// \file Test/include/RunAction.hh
 /// \brief Definition of the B1::RunAction class
 
 #ifndef B1RunAction_h

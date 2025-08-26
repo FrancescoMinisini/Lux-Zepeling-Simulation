@@ -1,5 +1,5 @@
 //
-/// \file B1/src/PMTSensitiveDetector.cc
+/// \file Test/src/PMTSensitiveDetector.cc
 #include "PMTSensitiveDetector.hh"
 
 #include "G4Step.hh"
