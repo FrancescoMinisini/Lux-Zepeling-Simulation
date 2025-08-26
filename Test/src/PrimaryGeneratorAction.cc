@@ -79,10 +79,14 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
   if (ion) {
     fParticleGun->SetParticleDefinition(ion);
     fParticleGun->SetParticleCharge(0.*eplus);
+
+    G4cout << "-------- Succesfully used ION ----------" << G4endl;
+
   } else {
     // Fallback: if ion not ready for some reason, use gamma so we don’t crash
     auto* gamma = G4ParticleTable::GetParticleTable()->FindParticle("gamma");
     fParticleGun->SetParticleDefinition(gamma);
+        G4cout << "-------- UnSuccesfully used ION ----------" << G4endl;
   }
 
 

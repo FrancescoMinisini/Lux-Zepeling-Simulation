@@ -7,6 +7,12 @@
 #include "G4EmStandardPhysics_option4.hh"
 #include "G4OpticalPhysics.hh"
 #include "G4OpticalParameters.hh"
+#include "G4BosonConstructor.hh"
+#include "G4LeptonConstructor.hh"
+#include "G4MesonConstructor.hh"
+#include "G4BaryonConstructor.hh"
+#include "G4IonConstructor.hh"
+#include "G4GenericIon.hh"
 
 namespace Test
 {
@@ -34,6 +40,18 @@ PhysicsList::PhysicsList() {
   op->SetCerenkovTrackSecondariesFirst(false);
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+// Explicitly build all standard particles + GenericIon.
+// This guarantees GenericIon exists before any GetIon(Z,A,...) call on workers.
+void PhysicsList::ConstructParticle() {
+  // Let all registered physics define their particles
+  G4VModularPhysicsList::ConstructParticle();
+  // Make absolutely sure GenericIon exists (needed for GetIon(Z,A,...))
+  G4GenericIon::GenericIonDefinition();
+}
+
+void PhysicsList::ConstructProcess() {
+  G4VModularPhysicsList::ConstructProcess();
+}
+
 
 } // namespace Test
