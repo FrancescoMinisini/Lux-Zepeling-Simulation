@@ -25,6 +25,8 @@ namespace {
 
 namespace Test {
 
+class PMTSensitiveDetector; // fwd
+
 EventAction::EventAction(RunAction* runAction)
 : fRunAction(runAction)
 {
@@ -39,10 +41,12 @@ void EventAction::BeginOfEventAction(const G4Event*)
 
 void EventAction::EndOfEventAction(const G4Event* evt)
 {
+  // Protezione: se per qualche motivo il SD non è presente
+  static const std::vector<G4double> kEmpty;
   G4int nTop = fPMTSD ? fPMTSD->GetNTop() : 0;
   G4int nBot = fPMTSD ? fPMTSD->GetNBot() : 0;
-  const auto& tTop = fPMTSD ? fPMTSD->TimesTop() : *(new std::vector<G4double>());
-  const auto& tBot = fPMTSD ? fPMTSD->TimesBot() : *(new std::vector<G4double>());
+  const auto& tTop = fPMTSD ? fPMTSD->TimesTop() : kEmpty;
+  const auto& tBot = fPMTSD ? fPMTSD->TimesBot() : kEmpty;
 
   G4double t_first_top = first_or_nan(tTop);
   G4double t_first_bot = first_or_nan(tBot);
@@ -54,21 +58,21 @@ void EventAction::EndOfEventAction(const G4Event* evt)
 
   auto* ana = G4AnalysisManager::Instance();
   auto fill = [&](int ntupleId){
-    ana->SetNtupleIColumn(ntupleId, 0, evt->GetEventID());
-    ana->SetNtupleIColumn(ntupleId, 1, nTop);
-    ana->SetNtupleIColumn(ntupleId, 2, nBot);
-    ana->SetNtupleDColumn(ntupleId, 3, fEdep/MeV);
-    ana->SetNtupleDColumn(ntupleId, 4, t_first_top/ns);
-    ana->SetNtupleDColumn(ntupleId, 5, t_first_bot/ns);
-    ana->SetNtupleDColumn(ntupleId, 6, t_mean_top/ns);
-    ana->SetNtupleDColumn(ntupleId, 7, t_mean_bot/ns);
+    ana->FillNtupleIColumn(ntupleId, 0, evt->GetEventID());
+    ana->FillNtupleIColumn(ntupleId, 1, nTop);
+    ana->FillNtupleIColumn(ntupleId, 2, nBot);
+    ana->FillNtupleDColumn(ntupleId, 3, fEdep/MeV);
+    ana->FillNtupleDColumn(ntupleId, 4, t_first_top/ns);
+    ana->FillNtupleDColumn(ntupleId, 5, t_first_bot/ns);
+    ana->FillNtupleDColumn(ntupleId, 6, t_mean_top/ns);
+    ana->FillNtupleDColumn(ntupleId, 7, t_mean_bot/ns);
     ana->AddNtupleRow(ntupleId);
   };
 
-  if      (cat==0) fill(0);
-  else if (cat==1) fill(1);
-  else if (cat==2) fill(2);
-  else if (cat==3) fill(3);
+  if      (cat==0) fill(0);      // single
+  else if (cat==1) fill(1);      // double_near
+  else if (cat==2) fill(2);      // double_far
+  else if (cat==3) fill(3);      // triple
 
   if (fPMTSD) fPMTSD->Clear();
 

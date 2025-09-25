@@ -41,12 +41,13 @@ target_link_libraries(Test ${Geant4_LIBRARIES})
 # relies on these scripts being in the current working directory.
 #
 set(TEST_SCRIPTS
-  Test.in
-  Test.out
-  init_vis.mac
-  run1.mac
-  run2.mac
-  vis.mac
+  macros/common_batch.mac
+  macros/init_vis.mac
+  macros/run_double_far.mac
+  macros/run_double_near.mac
+  macros/run_single.mac
+  macros/run_triple.mac
+  macros/vis.mac
   )
 
 foreach(_script ${TEST_SCRIPTS})
