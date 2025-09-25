@@ -6,7 +6,7 @@
 /process/verbose 0
 
 # (Opzionale) multi-threading: imposta il numero di thread se la build è MT
-# /run/numberOfThreads 4
+/run/numberOfThreads 1
 
 # Disabilita la visualizzazione in batch
 /vis/disable
