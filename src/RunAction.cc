@@ -31,7 +31,6 @@ RunAction::RunAction()
   accumulableManager->RegisterAccumulable(fEdep);
   accumulableManager->RegisterAccumulable(fEdep2);
 
-  // Crea ntuple (4 categorie) una volta sola (costruttore lato master e worker)
   auto* ana = G4AnalysisManager::Instance();
   ana->SetVerboseLevel(0);
 
@@ -40,7 +39,7 @@ RunAction::RunAction()
     ana->CreateNtupleIColumn("event_id");       // 0
     ana->CreateNtupleIColumn("nPhotTop");       // 1
     ana->CreateNtupleIColumn("nPhotBot");       // 2
-    ana->CreateNtupleDColumn("Edep_LXe");       // 3 (MeV)
+    ana->CreateNtupleDColumn("Edep_LXe");       // 3
     ana->CreateNtupleDColumn("t_first_top_ns"); // 4
     ana->CreateNtupleDColumn("t_first_bot_ns"); // 5
     ana->CreateNtupleDColumn("t_mean_top_ns");  // 6
@@ -57,17 +56,32 @@ void RunAction::BeginOfRunAction(const G4Run*)
 {
   G4RunManager::GetRunManager()->SetRandomNumberStore(false);
 
-  auto* accumulableManager = G4AccumulableManager::Instance();
-  accumulableManager->Reset();
-
-  std::filesystem::create_directories("out");
+  auto* accum = G4AccumulableManager::Instance();
+  accum->Reset();
 
   auto* ana = G4AnalysisManager::Instance();
 #ifdef G4MULTITHREADED
   ana->SetNtupleMerging(true);
 #endif
-  // default base name (puoi sovrascriverlo da macro con /analysis/setFileName)
-  ana->SetFileName("out/wimp_datasets");
+  ana->SetDefaultFileType("root");
+
+  // Se l'utente NON ha messo un nome da macro, usiamo il default
+  if (ana->GetFileName().empty()) {
+    ana->SetFileName("out/wimp_datasets");
+  }
+
+  // Crea la directory in base al percorso del nome file scelto
+  {
+    namespace fs = std::filesystem;
+    std::string base = ana->GetFileName();           // es. "out/wimp_single" (senza estensione)
+    fs::path p(base);
+    if (p.has_parent_path()) {
+      fs::create_directories(p.parent_path());
+    } else {
+      fs::create_directories("out"); // fallback
+    }
+  }
+
   ana->OpenFile();
 }
 

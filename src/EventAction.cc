@@ -25,24 +25,28 @@ namespace {
 
 namespace Test {
 
-class PMTSensitiveDetector; // fwd
-
 EventAction::EventAction(RunAction* runAction)
 : fRunAction(runAction)
 {
-  auto* sdman = G4SDManager::GetSDMpointer();
-  fPMTSD = static_cast<PMTSensitiveDetector*>(sdman->FindSensitiveDetector("PMTSD"));
+  // Non cercare il SD qui (in MT non è ancora creato).
 }
 
 void EventAction::BeginOfEventAction(const G4Event*)
 {
   fEdep = 0.;
+
+  // Lazy lookup del SD: in MT a questo punto i worker hanno la geometria pronta.
+  if (!fPMTSD) {
+    auto* sdman = G4SDManager::GetSDMpointer();
+    // Il secondo argomento "quiet" evita messaggi rumorosi
+    fPMTSD = static_cast<PMTSensitiveDetector*>(sdman->FindSensitiveDetector("PMTSD", /*quiet=*/true));
+  }
 }
 
 void EventAction::EndOfEventAction(const G4Event* evt)
 {
-  // Protezione: se per qualche motivo il SD non è presente
   static const std::vector<G4double> kEmpty;
+
   G4int nTop = fPMTSD ? fPMTSD->GetNTop() : 0;
   G4int nBot = fPMTSD ? fPMTSD->GetNBot() : 0;
   const auto& tTop = fPMTSD ? fPMTSD->TimesTop() : kEmpty;
@@ -69,10 +73,10 @@ void EventAction::EndOfEventAction(const G4Event* evt)
     ana->AddNtupleRow(ntupleId);
   };
 
-  if      (cat==0) fill(0);      // single
-  else if (cat==1) fill(1);      // double_near
-  else if (cat==2) fill(2);      // double_far
-  else if (cat==3) fill(3);      // triple
+  if      (cat==0) fill(0);
+  else if (cat==1) fill(1);
+  else if (cat==2) fill(2);
+  else if (cat==3) fill(3);
 
   if (fPMTSD) fPMTSD->Clear();
 
