@@ -41,3 +41,5 @@
 *.dwo
 
 \build
+\analysis_out
+\outputs

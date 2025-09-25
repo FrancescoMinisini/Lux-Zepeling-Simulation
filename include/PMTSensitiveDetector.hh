@@ -1,3 +1,5 @@
+//
+/// \file T/include/PMTSensitiveDetector.hh
 #ifndef Test_PMTSensitiveDetector_h
 #define Test_PMTSensitiveDetector_h 1
 
@@ -14,12 +16,12 @@ public:
   G4bool ProcessHits(G4Step*, G4TouchableHistory*) override;
   void EndOfEvent(G4HCofThisEvent*) override;
 
-  // Estensioni per feature
   inline G4int GetNTop() const { return fTop; }
   inline G4int GetNBot() const { return fBot; }
   inline const std::vector<G4double>& TimesTop() const { return fTimesTop; }
   inline const std::vector<G4double>& TimesBot() const { return fTimesBot; }
-  void Clear();
+
+  inline void Clear() { fTop = fBot = 0; fTimesTop.clear(); fTimesBot.clear(); }
 
 private:
   G4int fTop = 0;

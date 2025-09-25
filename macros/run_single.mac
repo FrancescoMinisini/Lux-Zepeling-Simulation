@@ -1,5 +1,7 @@
 /control/execute macros/common_batch.mac
 /analysis/setDefaultFileType root
+/analysis/setNtupleMerging true
+
 /analysis/setFileName ../outputs/wimp_single
 # In SimConfig: gen.event_category = 0
 /run/beamOn 5000

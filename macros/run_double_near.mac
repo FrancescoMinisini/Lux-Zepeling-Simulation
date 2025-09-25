@@ -1,5 +1,7 @@
 /control/execute macros/common_batch.mac
 /analysis/setDefaultFileType root
+/analysis/setNtupleMerging true
+
 /analysis/setFileName ../outputs/wimp_double_near
 # In SimConfig: gen.event_category = 1; near_dt_ns ~ 2; near_dr ~ 2 mm
 /run/beamOn 5000

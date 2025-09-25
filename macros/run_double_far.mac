@@ -1,5 +1,7 @@
 /control/execute macros/common_batch.mac
 /analysis/setDefaultFileType root
+/analysis/setNtupleMerging true
+
 /analysis/setFileName ../outputs/wimp_double_far
 # In SimConfig: gen.event_category = 2; far_dt_ns ~ 200; far_min_dr ~ 20 mm
 /run/beamOn 5000

@@ -1,86 +1,89 @@
+//
+/// \file Test/src/EventAction.cc
+/// \brief Implementation of the B1::EventAction class
+
 #include "EventAction.hh"
 #include "RunAction.hh"
-#include "SimConfig.hh"
+#include "PMTSensitiveDetector.hh"
 
 #include "G4Event.hh"
 #include "G4RunManager.hh"
 #include "G4SDManager.hh"
-#include "G4AnalysisManager.hh"
+#include "G4SystemOfUnits.hh"
 
-#include "PMTSensitiveDetector.hh"
-
+// C++ std
 #include <algorithm>
+#include <numeric>
 #include <limits>
 
-namespace {
-  inline G4double mean_or_nan(const std::vector<G4double>& v){
-    if (v.empty()) return std::numeric_limits<G4double>::quiet_NaN();
-    double s=0; for (auto x: v) s+=x; return s/v.size();
-  }
-  inline G4double first_or_nan(const std::vector<G4double>& v){
-    if (v.empty()) return std::numeric_limits<G4double>::quiet_NaN();
-    return *std::min_element(v.begin(), v.end());
-  }
-}
+// Analysis
+#include "G4AnalysisManager.hh"
 
-namespace Test {
+namespace Test
+{
 
 EventAction::EventAction(RunAction* runAction)
 : fRunAction(runAction)
-{
-  // Non cercare il SD qui (in MT non è ancora creato).
-}
+{}
 
 void EventAction::BeginOfEventAction(const G4Event*)
 {
   fEdep = 0.;
-
-  // Lazy lookup del SD: in MT a questo punto i worker hanno la geometria pronta.
-  if (!fPMTSD) {
-    auto* sdman = G4SDManager::GetSDMpointer();
-    // Il secondo argomento "quiet" evita messaggi rumorosi
-    fPMTSD = static_cast<PMTSensitiveDetector*>(sdman->FindSensitiveDetector("PMTSD", /*quiet=*/true));
-  }
 }
 
 void EventAction::EndOfEventAction(const G4Event* evt)
 {
-  static const std::vector<G4double> kEmpty;
-
-  G4int nTop = fPMTSD ? fPMTSD->GetNTop() : 0;
-  G4int nBot = fPMTSD ? fPMTSD->GetNBot() : 0;
-  const auto& tTop = fPMTSD ? fPMTSD->TimesTop() : kEmpty;
-  const auto& tBot = fPMTSD ? fPMTSD->TimesBot() : kEmpty;
-
-  G4double t_first_top = first_or_nan(tTop);
-  G4double t_first_bot = first_or_nan(tBot);
-  G4double t_mean_top  = mean_or_nan(tTop);
-  G4double t_mean_bot  = mean_or_nan(tBot);
-
-  auto& cfg = SimConfig::Get();
-  int cat = cfg.gen.event_category; // 0..3
-
-  auto* ana = G4AnalysisManager::Instance();
-  auto fill = [&](int ntupleId){
-    ana->FillNtupleIColumn(ntupleId, 0, evt->GetEventID());
-    ana->FillNtupleIColumn(ntupleId, 1, nTop);
-    ana->FillNtupleIColumn(ntupleId, 2, nBot);
-    ana->FillNtupleDColumn(ntupleId, 3, fEdep/MeV);
-    ana->FillNtupleDColumn(ntupleId, 4, t_first_top/ns);
-    ana->FillNtupleDColumn(ntupleId, 5, t_first_bot/ns);
-    ana->FillNtupleDColumn(ntupleId, 6, t_mean_top/ns);
-    ana->FillNtupleDColumn(ntupleId, 7, t_mean_bot/ns);
-    ana->AddNtupleRow(ntupleId);
-  };
-
-  if      (cat==0) fill(0);
-  else if (cat==1) fill(1);
-  else if (cat==2) fill(2);
-  else if (cat==3) fill(3);
-
-  if (fPMTSD) fPMTSD->Clear();
-
+  // accumula energia nel run action
   fRunAction->AddEdep(fEdep);
+
+  // --- prendi il SD corrente (thread-local) ---
+  auto* sdman = G4SDManager::GetSDMpointer();
+  auto* sd = dynamic_cast<Test::PMTSensitiveDetector*>(sdman->FindSensitiveDetector("PMTSD"));
+
+  G4int nTop = 0, nBot = 0;
+  G4double t_first_top = 0., t_first_bot = 0.;
+  G4double t_mean_top  = 0., t_mean_bot  = 0.;
+
+  if (sd) {
+    nTop = sd->GetNTop();
+    nBot = sd->GetNBot();
+
+    const auto& vt = sd->TimesTop();
+    const auto& vb = sd->TimesBot();
+
+    if (!vt.empty()) {
+      t_first_top = *std::min_element(vt.begin(), vt.end())/ns;
+      t_mean_top  = std::accumulate(vt.begin(), vt.end(), 0.0)/vt.size()/ns;
+    } else {
+      t_first_top = t_mean_top = std::numeric_limits<double>::quiet_NaN();
+    }
+
+    if (!vb.empty()) {
+      t_first_bot = *std::min_element(vb.begin(), vb.end())/ns;
+      t_mean_bot  = std::accumulate(vb.begin(), vb.end(), 0.0)/vb.size()/ns;
+    } else {
+      t_first_bot = t_mean_bot = std::numeric_limits<double>::quiet_NaN();
+    }
+  }
+
+  // --- analysis ntuple ---
+  auto* ana = G4AnalysisManager::Instance();
+
+  // ntuple 0: "single" (creata in RunAction)
+  int ntupleId = 0;
+
+  ana->FillNtupleIColumn(ntupleId, 0, evt->GetEventID());
+  ana->FillNtupleIColumn(ntupleId, 1, nTop);
+  ana->FillNtupleIColumn(ntupleId, 2, nBot);
+  ana->FillNtupleDColumn(ntupleId, 3, fEdep/MeV);
+  ana->FillNtupleDColumn(ntupleId, 4, t_first_top);
+  ana->FillNtupleDColumn(ntupleId, 5, t_first_bot);
+  ana->FillNtupleDColumn(ntupleId, 6, t_mean_top);
+  ana->FillNtupleDColumn(ntupleId, 7, t_mean_bot);
+  ana->AddNtupleRow(ntupleId);
+
+  // pulisci lo stato del SD per l’evento successivo
+  if (sd) sd->Clear();
 }
 
 } // namespace Test
