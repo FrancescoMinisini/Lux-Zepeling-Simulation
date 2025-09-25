@@ -1,58 +1,17 @@
-//
-
-//
-/// \file Test/src/PrimaryGeneratorAction.cc
-/// \brief Implementation of the B1::PrimaryGeneratorAction class
-
 #include "PrimaryGeneratorAction.hh"
 
 #include "SimConfig.hh"
-
-#include "G4LogicalVolumeStore.hh"
-#include "G4LogicalVolume.hh"
-#include "G4Box.hh"
-#include "G4RunManager.hh"
-#include "G4ParticleGun.hh"
+#include "G4IonTable.hh"
 #include "G4ParticleTable.hh"
-#include "G4ParticleDefinition.hh"
 #include "G4SystemOfUnits.hh"
 #include "Randomize.hh"
-
-// for ions
-#include "G4IonTable.hh"
-#include "G4ThreeVector.hh"
 #include "G4PhysicalConstants.hh"
 
-namespace Test
-{
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-// PrimaryGeneratorAction::PrimaryGeneratorAction()
-// {
-//   // number of primaries per event
-//   G4int n_particle = 1;
-//   fParticleGun  = new G4ParticleGun(n_particle);
-
-//   // default particle kinematic (WIMP-like proxy: xenon nuclear recoil)
-//   //
-//   // We generate a neutral Xe ion (e.g., Xe-131) that recoils with keV energy.
-//   // Direction, energy and position will be (re)assigned each event in GeneratePrimaries().
-//   G4int Z = 54;          // Xenon
-//   G4int A = 131;         // isotope (choice not critical here)
-//   auto* ion = G4IonTable::GetIonTable()->GetIon(Z, A, 0.*keV);
-
-//   fParticleGun->SetParticleDefinition(ion);
-//   fParticleGun->SetParticleCharge(0.*eplus);
-//   fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0.,0.,1.));
-//   fParticleGun->SetParticleEnergy(10.*keV);       // placeholder; overwritten per event
-//   fParticleGun->SetParticlePosition(G4ThreeVector(0.,0.,0.));
-// }
+namespace Test {
 
 PrimaryGeneratorAction::PrimaryGeneratorAction()
 {
   fParticleGun  = new G4ParticleGun(1);
-
-  // Safe placeholder; real definition set per event
   auto* gamma = G4ParticleTable::GetParticleTable()->FindParticle("gamma");
   fParticleGun->SetParticleDefinition(gamma);
   fParticleGun->SetParticleEnergy(10.*keV);
@@ -60,67 +19,77 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
   fParticleGun->SetParticlePosition({0,0,0});
 }
 
-PrimaryGeneratorAction::~PrimaryGeneratorAction()
-{
-  delete fParticleGun;
+PrimaryGeneratorAction::~PrimaryGeneratorAction() { delete fParticleGun; }
+
+G4ThreeVector PrimaryGeneratorAction::SamplePosInLXe(const SimConfig::Geometry& g) {
+  const G4double R = g.lxe_radius, H = g.lxe_height;
+  G4double u = G4UniformRand();
+  G4double r = R*std::sqrt(u);
+  G4double phi = 2.*pi*G4UniformRand();
+  G4double x = r*std::cos(phi), y = r*std::sin(phi);
+  G4double z = (G4UniformRand()-0.5)*H;
+  return {x,y,z};
+}
+
+void PrimaryGeneratorAction::GenerateCategory(EventCategory cat, G4Event* evt) {
+  auto& cfg = SimConfig::Get();
+  auto& g   = cfg.geom;
+  auto& gen = cfg.gen;
+
+  auto* ion = G4IonTable::GetIonTable()->GetIon(gen.ion_Z, gen.ion_A, 0.*keV);
+
+  auto shoot = [&](const G4ThreeVector& pos, G4double t_ns){
+    G4double c = 2.*G4UniformRand()-1.;
+    G4double s = std::sqrt(1.-c*c);
+    G4double ph = 2.*pi*G4UniformRand();
+    G4ThreeVector dir{s*std::cos(ph), s*std::sin(ph), c};
+
+    G4double Enr = gen.E_min + (gen.E_max - gen.E_min)*G4UniformRand();
+
+    fParticleGun->SetParticleDefinition(ion);
+    fParticleGun->SetParticleCharge(0.*eplus);
+    fParticleGun->SetParticlePosition(pos);
+    fParticleGun->SetParticleMomentumDirection(dir);
+    fParticleGun->SetParticleEnergy(Enr);
+    fParticleGun->SetParticleTime(t_ns*ns);
+    fParticleGun->GeneratePrimaryVertex(evt);
+  };
+
+  if (cat == EventCategory::Single) {
+    shoot(SamplePosInLXe(g), 0.0);
+  } else if (cat == EventCategory::DoubleNear) {
+    auto p0 = SamplePosInLXe(g);
+    G4ThreeVector dp(gen.near_dr, 0, 0);
+    shoot(p0, 0.0);
+    shoot(p0 + dp, gen.near_dt_ns);
+  } else if (cat == EventCategory::DoubleFar) {
+    auto p0 = SamplePosInLXe(g);
+    auto p1 = SamplePosInLXe(g);
+    while ((p1 - p0).mag() < gen.far_min_dr) p1 = SamplePosInLXe(g);
+    shoot(p0, 0.0);
+    shoot(p1, gen.far_dt_ns);
+  } else if (cat == EventCategory::Triple) {
+    shoot(SamplePosInLXe(g), gen.triple_t_ns_1);
+    shoot(SamplePosInLXe(g), gen.triple_t_ns_2);
+    shoot(SamplePosInLXe(g), gen.triple_t_ns_3);
+  }
 }
 
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 {
-  auto& cfg  = SimConfig::Get();
-  auto& g    = cfg.geom;
-  auto& gen  = cfg.gen;
-
-  if (gen.use_wimp_proxy) {
-    // Ensure ion definition exists
-    auto* ion = G4IonTable::GetIonTable()->GetIon(gen.ion_Z, gen.ion_A, 0.*keV);
-
-    if (ion) {
-      fParticleGun->SetParticleDefinition(ion);
-      fParticleGun->SetParticleCharge(0.*eplus);
-
-      // --- Sample position uniformly in the LXe cylinder
-      const G4double R = g.lxe_radius;
-      const G4double H = g.lxe_height;
-
-      G4double u   = G4UniformRand();
-      G4double r   = R * std::sqrt(u);
-      G4double phi = 2.*pi * G4UniformRand();
-      G4double x0  = r * std::cos(phi);
-      G4double y0  = r * std::sin(phi);
-      G4double z0  = (G4UniformRand() - 0.5) * H;
-      fParticleGun->SetParticlePosition(G4ThreeVector(x0,y0,z0));
-
-      // --- Isotropic direction
-      G4double cost  = 2.*G4UniformRand() - 1.;
-      G4double sint  = std::sqrt(1. - cost*cost);
-      G4double phiD  = 2.*pi * G4UniformRand();
-      fParticleGun->SetParticleMomentumDirection(
-        G4ThreeVector(sint*std::cos(phiD), sint*std::sin(phiD), cost));
-
-      // --- Flat energy in [Emin, Emax]
-      G4double Enr = gen.E_min + (gen.E_max - gen.E_min)*G4UniformRand();
-      fParticleGun->SetParticleEnergy(Enr);
-    } else {
-      // Fallback to gamma if ion somehow not ready
-      auto* gamma = G4ParticleTable::GetParticleTable()->FindParticle("gamma");
-      fParticleGun->SetParticleDefinition(gamma);
-      fParticleGun->SetParticleEnergy(gen.gamma_energy);
-      fParticleGun->SetParticlePosition(gen.gamma_position);
-      fParticleGun->SetParticleMomentumDirection(gen.gamma_direction);
-    }
+  auto& cfg = SimConfig::Get();
+  if (cfg.gen.use_wimp_proxy) {
+    auto cat = static_cast<EventCategory>(cfg.gen.event_category);
+    GenerateCategory(cat, anEvent);
   } else {
-    // Gamma calibration mode from config
+    auto& gen = cfg.gen;
     auto* gamma = G4ParticleTable::GetParticleTable()->FindParticle("gamma");
     fParticleGun->SetParticleDefinition(gamma);
     fParticleGun->SetParticleEnergy(gen.gamma_energy);
     fParticleGun->SetParticlePosition(gen.gamma_position);
     fParticleGun->SetParticleMomentumDirection(gen.gamma_direction);
+    fParticleGun->GeneratePrimaryVertex(anEvent);
   }
-
-  fParticleGun->GeneratePrimaryVertex(anEvent);
 }
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 } // namespace Test

@@ -1,7 +1,4 @@
-//
 /// \file Test/Test.cc
-/// \brief Main program of the B1 application
-
 #include "DetectorConstruction.hh"
 #include "PhysicsList.hh"
 #include "ActionInitialization.hh"
@@ -13,8 +10,8 @@
 
 int main(int argc, char** argv)
 {
-  // Detect interactive mode (if no arguments) and define UI session
-  G4UIExecutive* ui = ( argc == 1 ) ? new G4UIExecutive(argc, argv) : nullptr;
+  // UI interattiva se nessun argomento
+  G4UIExecutive* ui = (argc == 1) ? new G4UIExecutive(argc, argv) : nullptr;
 
   auto* runManager = G4RunManagerFactory::CreateRunManager(G4RunManagerType::Default);
 
@@ -39,7 +36,7 @@ int main(int argc, char** argv)
     // batch mode
     G4String command = "/control/execute ";
     G4String fileName = argv[1];
-    UImanager->ApplyCommand(command+fileName);
+    UImanager->ApplyCommand(command + fileName);
   }
 
   delete visManager;

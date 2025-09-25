@@ -1,0 +1,11 @@
+# Double "far" NR events (due primari ben separati)
+/control/execute common_batch.mac
+
+# Nome file dedicato alla classe "double_far"
+/analysis/setFileName wimp_double_far
+
+# Assicurati che in SimConfig:
+#   gen.event_category = 2  (DoubleFar)
+#   gen.delta_t_far_ns = 200   # per esempio
+#   soglia spaziale grande, p.es. > 20 mm nel generator
+/run/beamOn 5000

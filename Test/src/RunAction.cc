@@ -1,13 +1,6 @@
-//
-
-//
-/// \file Test/src/RunAction.cc
-/// \brief Implementation of the B1::RunAction class
-
 #include "RunAction.hh"
 #include "PrimaryGeneratorAction.hh"
 #include "DetectorConstruction.hh"
-// #include "Run.hh"
 
 #include "G4RunManager.hh"
 #include "G4Run.hh"
@@ -17,15 +10,13 @@
 #include "G4UnitsTable.hh"
 #include "G4SystemOfUnits.hh"
 
-namespace Test
-{
+#include "G4AnalysisManager.hh"
+#include <filesystem>
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+namespace Test {
 
 RunAction::RunAction()
 {
-  // add new units for dose
-  //
   const G4double milligray = 1.e-3*gray;
   const G4double microgray = 1.e-6*gray;
   const G4double nanogray  = 1.e-9*gray;
@@ -36,38 +27,58 @@ RunAction::RunAction()
   new G4UnitDefinition("nanogray" , "nanoGy"  , "Dose", nanogray);
   new G4UnitDefinition("picogray" , "picoGy"  , "Dose", picogray);
 
-  // Register accumulable to the accumulable manager
-  G4AccumulableManager* accumulableManager = G4AccumulableManager::Instance();
+  auto* accumulableManager = G4AccumulableManager::Instance();
   accumulableManager->RegisterAccumulable(fEdep);
   accumulableManager->RegisterAccumulable(fEdep2);
-}
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+  // Crea ntuple (4 categorie) una volta sola (costruttore lato master e worker)
+  auto* ana = G4AnalysisManager::Instance();
+  ana->SetVerboseLevel(0);
+
+  auto make = [&](const char* name){
+    ana->CreateNtuple(name, name);
+    ana->CreateNtupleIColumn("event_id");       // 0
+    ana->CreateNtupleIColumn("nPhotTop");       // 1
+    ana->CreateNtupleIColumn("nPhotBot");       // 2
+    ana->CreateNtupleDColumn("Edep_LXe");       // 3 (MeV)
+    ana->CreateNtupleDColumn("t_first_top_ns"); // 4
+    ana->CreateNtupleDColumn("t_first_bot_ns"); // 5
+    ana->CreateNtupleDColumn("t_mean_top_ns");  // 6
+    ana->CreateNtupleDColumn("t_mean_bot_ns");  // 7
+    ana->FinishNtuple();
+  };
+  make("single");
+  make("double_near");
+  make("double_far");
+  make("triple");
+}
 
 void RunAction::BeginOfRunAction(const G4Run*)
 {
-  // inform the runManager to save random number seed
   G4RunManager::GetRunManager()->SetRandomNumberStore(false);
 
-  // reset accumulables to their initial values
-  G4AccumulableManager* accumulableManager = G4AccumulableManager::Instance();
+  auto* accumulableManager = G4AccumulableManager::Instance();
   accumulableManager->Reset();
 
-}
+  std::filesystem::create_directories("out");
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+  auto* ana = G4AnalysisManager::Instance();
+#ifdef G4MULTITHREADED
+  ana->SetNtupleMerging(true);
+#endif
+  // default base name (puoi sovrascriverlo da macro con /analysis/setFileName)
+  ana->SetFileName("out/wimp_datasets");
+  ana->OpenFile();
+}
 
 void RunAction::EndOfRunAction(const G4Run* run)
 {
   G4int nofEvents = run->GetNumberOfEvent();
   if (nofEvents == 0) return;
 
-  // Merge accumulables
-  G4AccumulableManager* accumulableManager = G4AccumulableManager::Instance();
+  auto* accumulableManager = G4AccumulableManager::Instance();
   accumulableManager->Merge();
 
-  // Compute dose = total energy deposit in a run and its variance
-  //
   G4double edep  = fEdep.GetValue();
   G4double edep2 = fEdep2.GetValue();
 
@@ -80,47 +91,37 @@ void RunAction::EndOfRunAction(const G4Run* run)
   G4double dose = edep/mass;
   G4double rmsDose = rms/mass;
 
-  // Run conditions
-  //  note: There is no primary generator action object for "master"
-  //        run manager for multi-threaded mode.
+  if (IsMaster()) {
+    G4cout << G4endl << "--------------------End of Global Run-----------------------";
+  } else {
+    G4cout << G4endl << "--------------------End of Local Run------------------------";
+  }
+
   const auto generatorAction = static_cast<const PrimaryGeneratorAction*>(
     G4RunManager::GetRunManager()->GetUserPrimaryGeneratorAction());
   G4String runCondition;
-  if (generatorAction)
-  {
-    const G4ParticleGun* particleGun = generatorAction->GetParticleGun();
+  if (generatorAction) {
+    const auto* particleGun = generatorAction->GetParticleGun();
     runCondition += particleGun->GetParticleDefinition()->GetParticleName();
     runCondition += " of ";
     G4double particleEnergy = particleGun->GetParticleEnergy();
     runCondition += G4BestUnit(particleEnergy,"Energy");
   }
 
-  // Print
-  //
-  if (IsMaster()) {
-    G4cout
-     << G4endl
-     << "--------------------End of Global Run-----------------------";
-  }
-  else {
-    G4cout
-     << G4endl
-     << "--------------------End of Local Run------------------------";
-  }
-
   G4cout
-     << G4endl
-     << " The run consists of " << nofEvents << " "<< runCondition
-     << G4endl
-     << " Cumulated dose per run, in scoring volume : "
-     << G4BestUnit(dose,"Dose") << " rms = " << G4BestUnit(rmsDose,"Dose")
-     << G4endl
-     << "------------------------------------------------------------"
-     << G4endl
-     << G4endl;
-}
+    << G4endl
+    << " The run consists of " << nofEvents << " " << runCondition
+    << G4endl
+    << " Cumulated dose per run, in scoring volume : "
+    << G4BestUnit(dose,"Dose") << " rms = " << G4BestUnit(rmsDose,"Dose")
+    << G4endl
+    << "------------------------------------------------------------"
+    << G4endl << G4endl;
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+  auto* ana = G4AnalysisManager::Instance();
+  ana->Write();
+  ana->CloseFile();
+}
 
 void RunAction::AddEdep(G4double edep)
 {
@@ -128,6 +129,4 @@ void RunAction::AddEdep(G4double edep)
   fEdep2 += edep*edep;
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-}
+} // namespace Test

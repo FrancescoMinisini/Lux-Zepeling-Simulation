@@ -1,9 +1,3 @@
-//
-
-//
-/// \file Test/src/SteppingAction.cc
-/// \brief Implementation of the B1::SteppingAction class
-
 #include "SteppingAction.hh"
 #include "EventAction.hh"
 #include "DetectorConstruction.hh"
@@ -13,16 +7,10 @@
 #include "G4RunManager.hh"
 #include "G4LogicalVolume.hh"
 
-namespace Test
-{
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+namespace Test {
 
 SteppingAction::SteppingAction(EventAction* eventAction)
-: fEventAction(eventAction)
-{}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+: fEventAction(eventAction) {}
 
 void SteppingAction::UserSteppingAction(const G4Step* step)
 {
@@ -32,19 +20,13 @@ void SteppingAction::UserSteppingAction(const G4Step* step)
     fScoringVolume = detConstruction->GetScoringVolume();
   }
 
-  // get volume of the current step
-  G4LogicalVolume* volume
-    = step->GetPreStepPoint()->GetTouchableHandle()
+  G4LogicalVolume* volume = step->GetPreStepPoint()->GetTouchableHandle()
       ->GetVolume()->GetLogicalVolume();
 
-  // check if we are in scoring volume
   if (volume != fScoringVolume) return;
 
-  // collect energy deposited in this step
   G4double edepStep = step->GetTotalEnergyDeposit();
   fEventAction->AddEdep(edepStep);
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-}
+} // namespace Test

@@ -1,0 +1,11 @@
+# Double "near" NR events (due primari vicini nello spazio/tempo)
+/control/execute common_batch.mac
+
+# Nome file dedicato alla classe "double_near"
+/analysis/setFileName wimp_double_near
+
+# Assicurati che in SimConfig:
+#   gen.event_category = 1  (DoubleNear)
+#   gen.delta_t_near_ns = 2    # per esempio
+#   (e se usi una soglia spaziale, che sia piccola, p.es. 2 mm)
+/run/beamOn 5000

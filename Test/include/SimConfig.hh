@@ -1,7 +1,3 @@
-//
-/// \file Test/include/SimConfig.hh
-/// \brief Centralized simulation parameters for geometry, optics, generator.
-
 #ifndef Test_SimConfig_h
 #define Test_SimConfig_h 1
 
@@ -17,38 +13,55 @@ struct SimConfig {
     G4double lxe_radius   = 30*cm;
     G4double lxe_height   = 50*cm;
     G4double gxe_height   = 3*cm;
-    G4double wall_thick   = 1*cm;   // PTFE thickness
-    G4double pmt_thick    = 2*mm;   // PMT disk thickness
+    G4double wall_thick   = 1*cm;
+    G4double pmt_thick    = 2*mm;
   } geom;
 
   // --- Optics/scintillation (LXe)
   struct Optics {
-    G4bool   enable_optics          = true;    // turn optical physics on/off
-    G4double rindex                 = 1.69;    // ~178 nm index (flat)
-    G4double abs_length             = 10.*m;   // placeholder
-    G4double rayleigh_length        = 30.*cm;  // placeholder
+    G4bool   enable_optics          = true;
+    G4double rindex                 = 1.69;
+    G4double abs_length             = 10.*m;
+    G4double rayleigh_length        = 30.*cm;
     G4double scint_yield_perMeV     = 42000./MeV;
     G4double scint_fast_time        = 2.2*ns;
-    G4double scint_yield_ratio      = 1.0;     // all fast, placeholder
-    // Photon energy grid around 178 nm (~7.0 eV). 2-point flat spectrum is fine.
+    G4double scint_yield_ratio      = 1.0;
     G4double eV_min                 = 6.8*eV;
     G4double eV_max                 = 7.2*eV;
   } opt;
 
-  // --- Generator (WIMP-like Xe recoil)
+  // --- Generator (WIMP-like Xe recoil + categorie)
   struct Generator {
-    G4bool   use_wimp_proxy         = true;    // Xe recoil if true, else gamma (calib)
-    G4int    ion_Z                  = 54;      // Xenon
-    G4int    ion_A                  = 131;     // Xe-131
-    G4double E_min                  = 1.*keV;  // keV_nr lower bound
-    G4double E_max                  = 30.*keV; // keV_nr upper bound
-    // If using gamma instead:
+    G4bool   use_wimp_proxy         = true;
+
+    // Ion recoil
+    G4int    ion_Z                  = 54;
+    G4int    ion_A                  = 131;
+    G4double E_min                  = 1.*keV;
+    G4double E_max                  = 30.*keV;
+
+    // Gamma calib
     G4double gamma_energy           = 662.*keV;
     G4ThreeVector gamma_position    = G4ThreeVector(0.,0.,-20.*cm);
     G4ThreeVector gamma_direction   = G4ThreeVector(0.,0.,  1.);
+
+    // Categoria: 0..3 (Single, DoubleNear, DoubleFar, Triple)
+    G4int    event_category         = 0;
+
+    // Controlli spaziotemporali
+    G4double near_dt_ns             = 2.0;       // ns
+    G4double near_dr                = 2.0*mm;    // mm
+
+    G4double far_dt_ns              = 200.0;     // ns
+    G4double far_min_dr             = 20.0*mm;   // mm
+
+    // triple timings
+    G4double triple_t_ns_1          = 0.0;
+    G4double triple_t_ns_2          = 50.0;
+    G4double triple_t_ns_3          = 120.0;
   } gen;
 
-  // --- Optical parameters (process-level toggles)
+  // --- Optical process toggles
   struct OpticalProcess {
     G4bool scint_by_particle_type   = true;
     G4bool scint_track_sec_first    = true;
@@ -61,9 +74,7 @@ struct SimConfig {
     static SimConfig cfg;
     return cfg;
   }
-
 };
 
 } // namespace Test
-
 #endif

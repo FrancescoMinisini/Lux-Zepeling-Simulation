@@ -1,0 +1,10 @@
+# Single NR events
+/control/execute common_batch.mac
+
+# Se il tuo Geant4 ha il messenger dell'analysis attivo, puoi impostare il file:
+# Scriverà wimp_single.root (o wimp_single.* a seconda del backend)
+/analysis/setFileName wimp_single
+
+# Assicurati che in SimConfig: gen.event_category = 0  (Single)
+# Esegui 5000 eventi (puoi cambiare il numero)
+/run/beamOn 5000
