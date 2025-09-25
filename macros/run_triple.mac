@@ -1,8 +1,6 @@
 /control/execute macros/common_batch.mac
-#/analysis/setDefaultFileType root
-/analysis/setDefaultFileType csv
-# /analysis/setNtupleMerging true
 
+/analysis/setDefaultFileType csv
 /analysis/setFileName ../outputs/wimp_triple
-# In SimConfig: gen.event_category = 3; triple_t_ns_* = {0,50,120}
+
 /run/beamOn 5000

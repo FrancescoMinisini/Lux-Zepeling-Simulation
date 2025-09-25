@@ -1,34 +1,32 @@
-//
-/// \file T/include/PMTSensitiveDetector.hh
-#ifndef Test_PMTSensitiveDetector_h
-#define Test_PMTSensitiveDetector_h 1
-
+// Test/include/PMTSensitiveDetector.hh
+#pragma once
 #include "G4VSensitiveDetector.hh"
 #include <vector>
+
+class G4Step;
 
 namespace Test {
 
 class PMTSensitiveDetector : public G4VSensitiveDetector {
 public:
-  explicit PMTSensitiveDetector(const G4String& name);
+  PMTSensitiveDetector(const G4String& name);
   ~PMTSensitiveDetector() override = default;
 
-  G4bool ProcessHits(G4Step*, G4TouchableHistory*) override;
+  void Initialize(G4HCofThisEvent*) override;
+  G4bool ProcessHits(G4Step* step, G4TouchableHistory*) override;
   void EndOfEvent(G4HCofThisEvent*) override;
 
-  inline G4int GetNTop() const { return fTop; }
-  inline G4int GetNBot() const { return fBot; }
-  inline const std::vector<G4double>& TimesTop() const { return fTimesTop; }
-  inline const std::vector<G4double>& TimesBot() const { return fTimesBot; }
+  // Accessors per EventAction
+  inline int GetNTop() const { return (int)times_top_.size(); }
+  inline int GetNBot() const { return (int)times_bot_.size(); }
+  inline const std::vector<double>& TimesTop() const { return times_top_; }
+  inline const std::vector<double>& TimesBot() const { return times_bot_; }
 
-  inline void Clear() { fTop = fBot = 0; fTimesTop.clear(); fTimesBot.clear(); }
+  void Clear(); // pulizia manuale a fine evento (ridondante, ma comoda)
 
 private:
-  G4int fTop = 0;
-  G4int fBot = 0;
-  std::vector<G4double> fTimesTop;
-  std::vector<G4double> fTimesBot;
+  std::vector<double> times_top_; // tempi globali in ns
+  std::vector<double> times_bot_;
 };
 
 } // namespace Test
-#endif

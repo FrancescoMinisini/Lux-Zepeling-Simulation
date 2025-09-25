@@ -1,35 +1,70 @@
-//
-/// \file Test/src/PMTSensitiveDetector.cc
+// Test/src/PMTSensitiveDetector.cc
 #include "PMTSensitiveDetector.hh"
+// #include "SimConfig.hh" // quando avrai il campo QE nel config, riattiva
 
 #include "G4Step.hh"
 #include "G4Track.hh"
 #include "G4OpticalPhoton.hh"
-#include "G4ios.hh"
+#include "G4TouchableHistory.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4LogicalVolume.hh"
 
-namespace Test
-{
+namespace Test {
 
 PMTSensitiveDetector::PMTSensitiveDetector(const G4String& name)
-: G4VSensitiveDetector(name) {}
+: G4VSensitiveDetector(name)
+{}
 
-G4bool PMTSensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*) {
-  auto* trk = step->GetTrack();
-  if (trk->GetDefinition() != G4OpticalPhoton::Definition()) return false;
+void PMTSensitiveDetector::Initialize(G4HCofThisEvent*)
+{
+  times_top_.clear();
+  times_bot_.clear();
+}
 
-  auto name = step->GetPreStepPoint()->GetTouchableHandle()->GetVolume()->GetName();
-  auto t    = trk->GetGlobalTime();
+G4bool PMTSensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*)
+{
+  auto* track = step->GetTrack();
+  if (track->GetDefinition() != G4OpticalPhoton::OpticalPhotonDefinition())
+    return false;
 
-  if (name == "TopPMT")    { ++fTop; fTimesTop.push_back(t); }
-  if (name == "BottomPMT") { ++fBot; fTimesBot.push_back(t); }
+  const auto* pre = step->GetPreStepPoint();
+  const auto* lv  = pre->GetTouchableHandle()->GetVolume()->GetLogicalVolume();
+  const auto& name = lv->GetName();
 
-  trk->SetTrackStatus(fStopAndKill);
+  // QE temporanea: fissata a 1 per vedere subito conteggi
+  // Sostituisci con lettura da config quando disponibile (es. cfg.opt.pmt_qe)
+  const double qe = 1.0;
+
+  bool detected = true;
+  if (qe < 1.0) {
+    // Bernoulli semplice (se vorrai random veri, usa G4UniformRand)
+    // Qui evitiamo dipendenze extra: deterministico ma sufficiente
+    unsigned long mix = (unsigned long)(track->GetTrackID()*1469598103934665603ULL) ^
+                        (unsigned long)(pre->GetGlobalTime()/ns*1099511628211ULL);
+    double u = ((mix % 1000000) + 0.5) / 1000000.0;
+    detected = (u < qe);
+  }
+
+  if (detected) {
+    double t_ns = pre->GetGlobalTime()/ns;
+    if (name == "TopPMT") {
+      times_top_.push_back(t_ns);
+    } else if (name == "BottomPMT") {
+      times_bot_.push_back(t_ns);
+    }
+    // Uccidi il fotone quando entra nel PMT
+    track->SetTrackStatus(fStopAndKill);
+  }
+
   return true;
 }
 
-void PMTSensitiveDetector::EndOfEvent(G4HCofThisEvent*) {
-  G4cout << "[PMT] Top=" << fTop << "  Bottom=" << fBot << G4endl;
-  // non pulire qui: lo farà EventAction dopo aver letto
+void PMTSensitiveDetector::EndOfEvent(G4HCofThisEvent*) { /* no-op */ }
+
+void PMTSensitiveDetector::Clear()
+{
+  times_top_.clear();
+  times_bot_.clear();
 }
 
 } // namespace Test

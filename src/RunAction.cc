@@ -1,120 +1,56 @@
-//
-/// \file Test/src/RunAction.cc
-/// \brief Implementation of the B1::RunAction class
-
+// Test/src/RunAction.cc
 #include "RunAction.hh"
-#include "PrimaryGeneratorAction.hh"
-#include "DetectorConstruction.hh"
-
-#include "G4RunManager.hh"
 #include "G4Run.hh"
-#include "G4AccumulableManager.hh"
-#include "G4LogicalVolumeStore.hh"
-#include "G4LogicalVolume.hh"
-#include "G4UnitsTable.hh"
 #include "G4SystemOfUnits.hh"
-
-// Analysis
 #include "G4AnalysisManager.hh"
+#include "SimConfig.hh"
 
-namespace Test
-{
+namespace Test {
 
 RunAction::RunAction()
+: G4UserRunAction(),
+  fEdep(0.), fEdep2(0.)
 {
-  const G4double milligray = 1.e-3*gray;
-  const G4double microgray = 1.e-6*gray;
-  const G4double nanogray  = 1.e-9*gray;
-  const G4double picogray  = 1.e-12*gray;
+  auto* ana = G4AnalysisManager::Instance();
+  ana->SetVerboseLevel(1);
 
-  new G4UnitDefinition("milligray", "milliGy" , "Dose", milligray);
-  new G4UnitDefinition("microgray", "microGy" , "Dose", microgray);
-  new G4UnitDefinition("nanogray" , "nanoGy"  , "Dose", nanogray);
-  new G4UnitDefinition("picogray" , "picoGy"  , "Dose", picogray);
+  const auto& cfg = SimConfig::Get();
 
-  auto* am = G4AccumulableManager::Instance();
-  am->RegisterAccumulable(fEdep);
-  am->RegisterAccumulable(fEdep2);
+  // Nome ntuple in base alla categoria
+  G4String ntName = "single";
+  if (cfg.gen.event_category == 1) ntName = "double_near";
+  else if (cfg.gen.event_category == 2) ntName = "double_far";
+  else if (cfg.gen.event_category == 3) ntName = "triple";
+
+  ana->CreateNtuple(ntName, ntName);
+  ana->CreateNtupleIColumn(0, "event_id");
+  ana->CreateNtupleIColumn(0, "nPhotTop");
+  ana->CreateNtupleIColumn(0, "nPhotBot");
+  ana->CreateNtupleDColumn(0, "Edep_LXe");         // MeV
+  ana->CreateNtupleDColumn(0, "t_first_top_ns");
+  ana->CreateNtupleDColumn(0, "t_first_bot_ns");
+  ana->CreateNtupleDColumn(0, "t_mean_top_ns");
+  ana->CreateNtupleDColumn(0, "t_mean_bot_ns");
+  ana->FinishNtuple(0);
 }
 
 void RunAction::BeginOfRunAction(const G4Run*)
 {
-  G4RunManager::GetRunManager()->SetRandomNumberStore(false);
-
-  G4AccumulableManager::Instance()->Reset();
-
-  // --- Analysis manager setup ---
+  fEdep = 0.; fEdep2 = 0.;
   auto* ana = G4AnalysisManager::Instance();
-
-  if (!ana->IsOpenFile()) {
-    ana->OpenFile(); // usa nome e tipo impostati dalle macro
-  }
-
-  // Crea l’ntuple (id=0)
-  ana->CreateNtuple("single", "single");
-  ana->CreateNtupleIColumn("event_id");       // 0
-  ana->CreateNtupleIColumn("nPhotTop");       // 1
-  ana->CreateNtupleIColumn("nPhotBot");       // 2
-  ana->CreateNtupleDColumn("Edep_LXe");       // 3 [MeV]
-  ana->CreateNtupleDColumn("t_first_top_ns"); // 4
-  ana->CreateNtupleDColumn("t_first_bot_ns"); // 5
-  ana->CreateNtupleDColumn("t_mean_top_ns");  // 6
-  ana->CreateNtupleDColumn("t_mean_bot_ns");  // 7
-  ana->FinishNtuple(0);
+  // Il nome file e il tipo vengono dal macro:
+  //   /analysis/setDefaultFileType csv
+  //   /analysis/setFileName ../outputs/wimp_single
+  ana->OpenFile();
 }
 
 void RunAction::EndOfRunAction(const G4Run* run)
 {
-  G4int nofEvents = run->GetNumberOfEvent();
-  if (nofEvents == 0) return;
-
-  G4AccumulableManager::Instance()->Merge();
-
-  G4double edep  = fEdep.GetValue();
-  G4double edep2 = fEdep2.GetValue();
-
-  G4double rms = edep2 - edep*edep/nofEvents;
-  if (rms > 0.) rms = std::sqrt(rms); else rms = 0.;
-
-  const auto detConstruction = static_cast<const DetectorConstruction*>(
-    G4RunManager::GetRunManager()->GetUserDetectorConstruction());
-  G4double mass = detConstruction->GetScoringVolume()->GetMass();
-  G4double dose = edep/mass;
-  G4double rmsDose = rms/mass;
-
-  const auto generatorAction = static_cast<const PrimaryGeneratorAction*>(
-    G4RunManager::GetRunManager()->GetUserPrimaryGeneratorAction());
-  G4String runCondition;
-  if (generatorAction)
-  {
-    const G4ParticleGun* particleGun = generatorAction->GetParticleGun();
-    runCondition += particleGun->GetParticleDefinition()->GetParticleName();
-    runCondition += " of ";
-    G4double particleEnergy = particleGun->GetParticleEnergy();
-    runCondition += G4BestUnit(particleEnergy,"Energy");
-  }
-
-  if (IsMaster()) {
-    G4cout << G4endl << "--------------------End of Global Run-----------------------";
-  } else {
-    G4cout << G4endl << "--------------------End of Local Run------------------------";
-  }
-
-  G4cout
-     << G4endl
-     << " The run consists of " << nofEvents << " "<< runCondition
-     << G4endl
-     << " Cumulated dose per run, in scoring volume : "
-     << G4BestUnit(dose,"Dose") << " rms = " << G4BestUnit(rmsDose,"Dose")
-     << G4endl
-     << "------------------------------------------------------------"
-     << G4endl << G4endl;
+  if (run->GetNumberOfEvent() == 0) return;
 
   auto* ana = G4AnalysisManager::Instance();
-  if (ana->IsOpenFile()) {
-    ana->Write();
-    ana->CloseFile(true);
-  }
+  ana->Write();
+  ana->CloseFile();
 }
 
 void RunAction::AddEdep(G4double edep)

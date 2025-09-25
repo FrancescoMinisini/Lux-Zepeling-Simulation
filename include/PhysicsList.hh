@@ -1,22 +1,18 @@
-
-/// \file Test/include/PhysicsList.hh
-/// \brief Definition of the Test::PhysicsList class
-#ifndef Test_PhysicsList_h
-#define Test_PhysicsList_h 1
-
+#pragma once
 #include "G4VModularPhysicsList.hh"
 
-namespace Test
-{
+namespace Test {
 
-  class PhysicsList : public G4VModularPhysicsList
-  {
-  public:
-    PhysicsList();
-    ~PhysicsList() override = default;
-    void ConstructParticle() override;
-    void ConstructProcess() override;
-  };
+class PhysicsList : public G4VModularPhysicsList {
+public:
+  PhysicsList();
+  ~PhysicsList() override = default;
+
+  // Costruisce i processi dalle physics registrate
+  void ConstructProcess() override;
+
+  // Tagli di produzione (deve esistere anche nell'header!)
+  void SetCuts() override;
+};
 
 } // namespace Test
-#endif

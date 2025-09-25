@@ -1,21 +1,9 @@
-# -------- Common batch settings --------
-/control/verbose 0
-/run/verbose 0
+/run/verbose 1
 /event/verbose 0
 /tracking/verbose 0
-/process/verbose 0
 
-# (Opzionale) multi-threading: imposta il numero di thread se la build è MT
+# forza single thread prima dell'initialize
 /run/numberOfThreads 1
 
-# Disabilita la visualizzazione in batch
-/vis/disable
-
-# Random seed riproducibile (cambia le coppie per nuovi dataset)
-/random/setSeeds 123456 789012
-
-# Inizializza il run
+# inizializza il kernel (obbligatorio prima di /run/beamOn)
 /run/initialize
-
-# (Opzionale) tagga il file di output; il codice imposta "wimp_datasets" come base.
-# Qui aggiungiamo un suffisso per categoria in ciascuna macro specifica con /analysis/setFileName

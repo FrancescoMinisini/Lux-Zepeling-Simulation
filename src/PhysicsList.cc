@@ -1,48 +1,52 @@
-//
-/// \file Test/src/PhysicsList.cc
-/// \brief Implementation of the Test::PhysicsList class
+// Test/src/PhysicsList.cc
 #include "PhysicsList.hh"
-#include "G4IonPhysics.hh"
-#include "SimConfig.hh"
+#include "G4SystemOfUnits.hh"
+
+// Decay + EM
 #include "G4DecayPhysics.hh"
 #include "G4EmStandardPhysics_option4.hh"
+
+// Ottica
 #include "G4OpticalPhysics.hh"
 #include "G4OpticalParameters.hh"
 
-#include "G4GenericIon.hh"
+namespace Test {
 
-namespace Test
-{
+PhysicsList::PhysicsList() : G4VModularPhysicsList() {
+  defaultCutValue = 0.1*mm;
+  SetVerboseLevel(1);
 
-PhysicsList::PhysicsList() {
-  // EM physics
-  RegisterPhysics(new G4EmStandardPhysics_option4());
-  // Decays
+  // Fisica "di base"
   RegisterPhysics(new G4DecayPhysics());
-  RegisterPhysics(new G4IonPhysics());
+  RegisterPhysics(new G4EmStandardPhysics_option4());
 
-  // Optics
+  // Ottica
   auto* opt = new G4OpticalPhysics();
   RegisterPhysics(opt);
-
-  // Configure via G4OpticalParameters (G4 11.2)
-  auto* op = G4OpticalParameters::Instance();
-  auto& cfg = SimConfig::Get().optProc;
-
-  op->SetScintByParticleType(cfg.scint_by_particle_type);
-  op->SetScintTrackSecondariesFirst(cfg.scint_track_sec_first);
-
-  op->SetCerenkovMaxPhotonsPerStep(cfg.cerenkov_enable ? cfg.cerenkov_max_photons : 0);
-  op->SetCerenkovTrackSecondariesFirst(cfg.cerenkov_track_sec_first);
 }
 
-void PhysicsList::ConstructParticle() {
-  G4VModularPhysicsList::ConstructParticle();
-  G4GenericIon::GenericIonDefinition();
+void PhysicsList::SetCuts() {
+  SetCutsWithDefault();
+  if (verboseLevel > 0) DumpCutValuesTable();
 }
 
 void PhysicsList::ConstructProcess() {
+  // Costruisce i processi da tutte le physics registrate
   G4VModularPhysicsList::ConstructProcess();
+
+  // Parametri ottici per Geant4 11.2.x
+  auto* op = G4OpticalParameters::Instance();
+
+  // Scintillazione per tipo di particella
+  op->SetScintByParticleType(false);
+
+  // Traccia prima le secondarie (utile per tempi)
+  op->SetScintTrackSecondariesFirst(true);
+  op->SetCerenkovTrackSecondariesFirst(true);
+
+  // Verbose basso
+  op->SetScintVerboseLevel(0);
+  op->SetCerenkovVerboseLevel(0);
 }
 
 } // namespace Test
