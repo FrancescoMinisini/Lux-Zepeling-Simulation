@@ -3,10 +3,10 @@
 /analysis/setDefaultFileType csv
 /analysis/setFileName ../outputs/wimp_single
 # Maximum verbosity for debugging
-/run/verbose 2
-/event/verbose 2
-/tracking/verbose 2
-/process/verbose 2
-/process/optical/verbose 2
+# /run/verbose 2
+# /event/verbose 2
+# /tracking/verbose 2
+# /process/verbose 2
+#/process/optical/verbose 2
 # Run more events for better statistics
-/run/beamOn 100
+/run/beamOn 5000
