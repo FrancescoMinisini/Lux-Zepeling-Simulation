@@ -27,7 +27,8 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
   fParticleGun  = new G4ParticleGun(1);
   auto* gamma = G4ParticleTable::GetParticleTable()->FindParticle("gamma");
   fParticleGun->SetParticleDefinition(gamma);
-  fParticleGun->SetParticleEnergy(10.*keV);
+  fParticleGun->SetParticleEnergy(1.*GeV);
+  // fParticleGun->SetParticleEnergy(10.*keV);
   fParticleGun->SetParticleMomentumDirection({0,0,1});
   fParticleGun->SetParticlePosition({0,0,0});
 }

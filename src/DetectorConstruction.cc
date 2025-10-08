@@ -1,7 +1,3 @@
-//
-/// \file Test/src/DetectorConstruction.cc
-/// \brief Implementation of the B1::DetectorConstruction class
-
 #include "DetectorConstruction.hh"
 #include "SimConfig.hh"
 #include "G4RunManager.hh"
@@ -16,6 +12,8 @@
 #include "G4MaterialPropertiesTable.hh"
 #include "G4SDManager.hh"
 #include "G4LogicalVolumeStore.hh"
+#include "G4OpticalSurface.hh"
+#include "G4LogicalBorderSurface.hh"
 
 // SD
 #include "PMTSensitiveDetector.hh"
@@ -88,8 +86,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
       // GXe
       {
         auto* mpt = new G4MaterialPropertiesTable();
-        G4double nG[N]  = {1.03, 1.03};
-        G4double abs[N] = {100.*m, 100.*m};
+        G4double nG[N]  = {1.46, 1.46}; // Match SiO2 to reduce TIR
+        G4double abs[N] = {o.abs_length, o.abs_length};
         mpt->AddProperty("RINDEX",    E, nG,  N, true);
         mpt->AddProperty("ABSLENGTH", E, abs, N, true);
         gxe_mat->SetMaterialPropertiesTable(mpt);
@@ -107,26 +105,70 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   // --- Geometry ---
   auto solidLXe = new G4Tubs("LXeSolid", 0.*cm, geom.lxe_radius, 0.5*geom.lxe_height, 0.*deg, 360.*deg);
   auto logicLXe = new G4LogicalVolume(solidLXe, lxe_mat, "LXe");
-  new G4PVPlacement(nullptr, {0,0,0}, logicLXe, "LXe", logicWorld, false, 0, checkOverlaps);
+  auto physLXe  = new G4PVPlacement(nullptr, {0,0,0}, logicLXe, "LXe", logicWorld, false, 0, checkOverlaps);
 
   auto solidGXe = new G4Tubs("GXeSolid", 0.*cm, geom.lxe_radius, 0.5*geom.gxe_height, 0.*deg, 360.*deg);
   auto logicGXe = new G4LogicalVolume(solidGXe, gxe_mat, "GXe");
-  new G4PVPlacement(nullptr, {0,0, 0.5*geom.lxe_height + 0.5*geom.gxe_height}, logicGXe, "GXe", logicWorld, false, 0, checkOverlaps);
+  auto physGXe  = new G4PVPlacement(nullptr, {0,0, 0.5*geom.lxe_height + 0.5*geom.gxe_height}, logicGXe, "GXe", logicWorld, false, 0, checkOverlaps);
 
   auto solidWall = new G4Tubs("PTFEWallSolid", geom.lxe_radius, geom.lxe_radius + geom.wall_thick,
                               0.5*(geom.lxe_height + geom.gxe_height), 0.*deg, 360.*deg);
   auto logicWall = new G4LogicalVolume(solidWall, ptfe_mat, "PTFEWall");
-  new G4PVPlacement(nullptr, {0,0, 0.5*geom.gxe_height}, logicWall, "PTFEWall", logicWorld, false, 0, checkOverlaps);
+  auto physWall  = new G4PVPlacement(nullptr, {0,0, 0.5*geom.gxe_height}, logicWall, "PTFEWall", logicWorld, false, 0, checkOverlaps);
 
   auto solidTopPMT = new G4Tubs("TopPMTSolid", 0.*cm, geom.lxe_radius, 0.5*geom.pmt_thick, 0.*deg, 360.*deg);
   auto logicTopPMT = new G4LogicalVolume(solidTopPMT, pmt_mat, "TopPMT");
-  new G4PVPlacement(nullptr, {0,0, 0.5*geom.lxe_height + geom.gxe_height + 0.5*geom.pmt_thick},
-                    logicTopPMT, "TopPMT", logicWorld, false, 0, checkOverlaps);
+  auto physTopPMT  = new G4PVPlacement(nullptr, {0,0, 0.5*geom.lxe_height + geom.gxe_height + 0.5*geom.pmt_thick},
+                                       logicTopPMT, "TopPMT", logicWorld, false, 0, checkOverlaps);
 
   auto solidBotPMT = new G4Tubs("BottomPMTSolid", 0.*cm, geom.lxe_radius, 0.5*geom.pmt_thick, 0.*deg, 360.*deg);
   auto logicBotPMT = new G4LogicalVolume(solidBotPMT, pmt_mat, "BottomPMT");
-  new G4PVPlacement(nullptr, {0,0, -(0.5*geom.lxe_height + 0.5*geom.pmt_thick)},
-                    logicBotPMT, "BottomPMT", logicWorld, false, 0, checkOverlaps);
+  auto physBotPMT  = new G4PVPlacement(nullptr, {0,0, -(0.5*geom.lxe_height + 0.5*geom.pmt_thick)},
+                                       logicBotPMT, "BottomPMT", logicWorld, false, 0, checkOverlaps);
+
+  // --- Reflective PTFE wall surface ---
+  if (cfg.opt.enable_optics) {
+    auto* opWall = new G4OpticalSurface("WallSurf");
+    opWall->SetType(dielectric_metal);
+    opWall->SetModel(unified);
+    opWall->SetFinish(ground); // Diffuse reflection
+
+    auto* mptWall = new G4MaterialPropertiesTable();
+    const G4int N = 2;
+    G4double E[N] = {o.eV_min, o.eV_max};
+    G4double refl[N] = {0.95, 0.95};
+    mptWall->AddProperty("REFLECTIVITY", E, refl, N);
+    opWall->SetMaterialPropertiesTable(mptWall);
+
+    new G4LogicalBorderSurface("LXeWallBorder", physLXe, physWall, opWall);
+    new G4LogicalBorderSurface("GXeWallBorder", physGXe, physWall, opWall);
+
+    // --- PMT optical surfaces (dielectric_dielectric) ---
+    auto* opTopPMT = new G4OpticalSurface("TopPMTSurf");
+    opTopPMT->SetType(dielectric_dielectric);
+    opTopPMT->SetModel(unified);
+    opTopPMT->SetFinish(polished);
+
+    auto* mptTopPMT = new G4MaterialPropertiesTable();
+    G4double eff[N] = {o.pmt_qe, o.pmt_qe};
+    G4double trans[N] = {1.0, 1.0}; // Full transmission
+    mptTopPMT->AddProperty("EFFICIENCY", E, eff, N);
+    mptTopPMT->AddProperty("TRANSMITTANCE", E, trans, N);
+    opTopPMT->SetMaterialPropertiesTable(mptTopPMT);
+
+    auto* opBotPMT = new G4OpticalSurface("BotPMTSurf");
+    opBotPMT->SetType(dielectric_dielectric);
+    opBotPMT->SetModel(unified);
+    opBotPMT->SetFinish(polished);
+
+    auto* mptBotPMT = new G4MaterialPropertiesTable();
+    mptBotPMT->AddProperty("EFFICIENCY", E, eff, N);
+    mptBotPMT->AddProperty("TRANSMITTANCE", E, trans, N);
+    opBotPMT->SetMaterialPropertiesTable(mptBotPMT);
+
+    new G4LogicalBorderSurface("GXeTopPMTBorder", physGXe, physTopPMT, opTopPMT);
+    new G4LogicalBorderSurface("LXeBotPMTBorder", physLXe, physBotPMT, opBotPMT);
+  }
 
   // --- Visuals ---
   logicWorld->SetVisAttributes(new G4VisAttributes(G4Colour(0,0,0,0)));
