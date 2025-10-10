@@ -1,32 +1,26 @@
-// Test/include/PMTSensitiveDetector.hh
-#pragma once
+#ifndef LZSIM_PMTSENSITIVEDETECTOR_HH
+#define LZSIM_PMTSENSITIVEDETECTOR_HH
+
 #include "G4VSensitiveDetector.hh"
 #include <vector>
 
 class G4Step;
+class G4HCofThisEvent;
 
-namespace Test {
-
+namespace LZSim {
 class PMTSensitiveDetector : public G4VSensitiveDetector {
 public:
   PMTSensitiveDetector(const G4String& name);
-  ~PMTSensitiveDetector() override = default;
-
   void Initialize(G4HCofThisEvent*) override;
-  G4bool ProcessHits(G4Step* step, G4TouchableHistory*) override;
+  G4bool ProcessHits(G4Step*, G4TouchableHistory*) override;
   void EndOfEvent(G4HCofThisEvent*) override;
-
-  // Accessors per EventAction
-  inline int GetNTop() const { return (int)times_top_.size(); }
-  inline int GetNBot() const { return (int)times_bot_.size(); }
-  inline const std::vector<double>& TimesTop() const { return times_top_; }
-  inline const std::vector<double>& TimesBot() const { return times_bot_; }
-
-  void Clear(); // pulizia manuale a fine evento (ridondante, ma comoda)
+  void Clear();
+  G4int GetNTop() const { return times_top_.size(); }
+  const std::vector<G4double>& TimesTop() const { return times_top_; }
 
 private:
-  std::vector<double> times_top_; // tempi globali in ns
-  std::vector<double> times_bot_;
+  std::vector<G4double> times_top_;
 };
+} // namespace LZSim
 
-} // namespace Test
+#endif

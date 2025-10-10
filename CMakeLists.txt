@@ -1,7 +1,7 @@
 #----------------------------------------------------------------------------
 # Setup the project
 cmake_minimum_required(VERSION 3.16...3.27)
-project(Test)
+project(LZSim)
 
 #----------------------------------------------------------------------------
 # Find Geant4 package, activating all available UI and Vis drivers by default
@@ -32,25 +32,22 @@ file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh)
 #----------------------------------------------------------------------------
 # Add the executable, and link it to the Geant4 libraries
 #
-add_executable(Test Test.cc ${sources} ${headers})
-target_link_libraries(Test ${Geant4_LIBRARIES})
+add_executable(LZSim LZSim.cc ${sources} ${headers})
+target_link_libraries(LZSim ${Geant4_LIBRARIES})
 
 #----------------------------------------------------------------------------
 # Copy all scripts to the build directory, i.e. the directory in which we
 # build B1. This is so that we can run the executable directly because it
 # relies on these scripts being in the current working directory.
 #
-set(TEST_SCRIPTS
-  macros/common_batch.mac
+set(LZSim_SCRIPTS
+macros/common_batch.mac
   macros/init_vis.mac
-  macros/run_double_far.mac
-  macros/run_double_near.mac
-  macros/run_single.mac
-  macros/run_triple.mac
+  macros/run_s2.mac  # New macro for S2
   macros/vis.mac
   )
 
-foreach(_script ${TEST_SCRIPTS})
+foreach(_script ${LZSim_SCRIPTS})
   configure_file(
     ${PROJECT_SOURCE_DIR}/${_script}
     ${PROJECT_BINARY_DIR}/${_script}
@@ -62,9 +59,9 @@ endforeach()
 # For internal Geant4 use - but has no effect if you build this
 # example standalone
 #
-add_custom_target(TestCustom DEPENDS TestCustom)
+add_custom_target(LZSimCustom DEPENDS LZSimCustom)
 
 #----------------------------------------------------------------------------
 # Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
 #
-install(TARGETS Test DESTINATION bin)
+install(TARGETS LZSim DESTINATION bin)

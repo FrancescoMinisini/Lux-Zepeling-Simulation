@@ -1,44 +1,23 @@
-//
-
-//
-/// \file Test/include/EventAction.hh
-/// \brief Definition of the B1::EventAction class
-
-#ifndef B1EventAction_h
-#define B1EventAction_h 1
+#ifndef LZSIM_EVENTACTION_HH
+#define LZSIM_EVENTACTION_HH
 
 #include "G4UserEventAction.hh"
 #include "globals.hh"
-#include "PMTSensitiveDetector.hh"
 
-namespace Test
-{
+namespace LZSim {
+class RunAction;  // Move forward declaration inside namespace
 
-class RunAction;
+class EventAction : public G4UserEventAction {
+public:
+  EventAction(RunAction* runAction);
+  void BeginOfEventAction(const G4Event* event) override;
+  void EndOfEventAction(const G4Event* event) override;
+  void AddEdep(G4double edep) { fEdep += edep; }
 
-/// Event action class
-
-class EventAction : public G4UserEventAction
-{
-  public:
-    EventAction(RunAction* runAction);
-    ~EventAction() override = default;
-
-    void BeginOfEventAction(const G4Event* event) override;
-    void EndOfEventAction(const G4Event* event) override;
-
-    void AddEdep(G4double edep) { fEdep += edep; }
-
-  private:
-    RunAction* fRunAction = nullptr;
-    G4double   fEdep = 0.;
-    PMTSensitiveDetector* fPMTSD     = nullptr;
+private:
+  RunAction* fRunAction = nullptr;
+  G4double fEdep = 0.;
 };
-
-}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+} // namespace LZSim
 
 #endif
-
-

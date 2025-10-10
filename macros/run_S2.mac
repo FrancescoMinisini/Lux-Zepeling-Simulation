@@ -1,0 +1,6 @@
+/control/verbose 1
+/run/verbose 1
+/analysis/setDefaultFileType root
+/analysis/setFileName ../outputs/lz_s2
+/run/initialize
+/run/beamOn 10000  # Number of events

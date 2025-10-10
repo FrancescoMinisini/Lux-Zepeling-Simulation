@@ -1,67 +1,41 @@
-#ifndef Test_SimConfig_h
-#define Test_SimConfig_h 1
+#ifndef LZSIM_SIMCONFIG_HH
+#define LZSIM_SIMCONFIG_HH
 #include "G4SystemOfUnits.hh"
-#include "globals.hh"
 #include "G4ThreeVector.hh"
-namespace Test {
+#include "G4Types.hh"
+
+namespace LZSim {
 struct SimConfig {
-  // --- Geometry (mini TPC)
   struct Geometry {
-    G4double lxe_radius = 30*cm;
-    G4double lxe_height = 50*cm;
-    G4double gxe_height = 0.1*cm;
-    G4double wall_thick = 1*cm;
-    G4double pmt_thick = 2*mm;
+    G4double gxe_radius = 50. * cm;  // Scaled down from LZ ~73 cm
+    G4double gxe_height = 1.0 * cm;  // Typical gas gap
+    G4double pmt_thick = 0.5 * cm;
   } geom;
-  // --- Optics/scintillation (LXe)
-  struct Optics {
+
+  struct Optical {
     G4bool enable_optics = true;
-    G4double rindex = 1.69;
-    G4double abs_length = 1000.*m;
-    G4double rayleigh_length = 500.*cm; // Increased to reduce scattering
-    G4double scint_yield_perMeV = 200000./MeV;
-    G4double scint_fast_time = 2.2*ns;
+    G4double eV_min = 6. * eV;
+    G4double eV_max = 8. * eV;  // ~175 nm for Xe
+    G4double rindex = 1.001;  // For gas Xe
+    G4double abs_length = 100. * m;
+    G4double rayleigh_length = 10. * cm;
+    G4double scint_yield_perMeV = 5000.;  // High for EL proxy
+    G4double scint_fast_time = 2. * ns;
     G4double scint_yield_ratio = 1.0;
-    G4double eV_min = 6.8*eV;
-    G4double eV_max = 7.2*eV;
-    G4double pmt_qe = 1.0;
+    G4double pmt_qe = 0.3;
   } opt;
-  // --- Generator (WIMP-like Xe recoil + categorie)
+
   struct Generator {
-    G4bool use_wimp_proxy = false; // Gamma for testing
-    // Ion recoil
-    G4int ion_Z = 54;
-    G4int ion_A = 131;
-    G4double E_min = 1.*keV;
-    G4double E_max = 30.*keV;
-    // Gamma calib
-    G4double gamma_energy = 662.*keV;
-    G4ThreeVector gamma_position = G4ThreeVector(0.,0.,0.); // Centered
-    G4ThreeVector gamma_direction = G4ThreeVector(0.,0.,1.);
-    // Categoria: 0..3 (Single, DoubleNear, DoubleFar, Triple)
-    G4int event_category = 0;
-    // Controlli spaziotemporali
-    G4double near_dt_ns = 2.0; // ns
-    G4double near_dr = 2.0*mm; // mm
-    G4double far_dt_ns = 200.0; // ns
-    G4double far_min_dr = 20.0*mm; // mm
-    // triple timings
-    G4double triple_t_ns_1 = 0.0;
-    G4double triple_t_ns_2 = 50.0;
-    G4double triple_t_ns_3 = 120.0;
+    G4double electron_energy = 5. * keV;  // keV range
+    G4ThreeVector electron_position = {0, 0, -0.5 * 1.0 * cm};  // Bottom of gas
+    G4ThreeVector electron_direction = {0, 0, 1};  // Up
   } gen;
-  // --- Optical process toggles
-  struct OpticalProcess {
-    G4bool scint_by_particle_type = false;
-    G4bool scint_track_sec_first = true;
-    G4bool cerenkov_enable = false;
-    G4int cerenkov_max_photons = 0;
-    G4bool cerenkov_track_sec_first = false;
-  } optProc;
-  static inline SimConfig& Get() {
-    static SimConfig cfg;
-    return cfg;
+
+  static SimConfig& Get() {
+    static SimConfig instance;
+    return instance;
   }
 };
-} // namespace Test
+} // namespace LZSim
+
 #endif

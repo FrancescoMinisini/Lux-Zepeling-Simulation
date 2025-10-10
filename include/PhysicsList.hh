@@ -1,18 +1,15 @@
-#pragma once
+#ifndef LZSIM_PHYSICSLIST_HH
+#define LZSIM_PHYSICSLIST_HH
+
 #include "G4VModularPhysicsList.hh"
 
-namespace Test {
-
+namespace LZSim {
 class PhysicsList : public G4VModularPhysicsList {
 public:
   PhysicsList();
-  ~PhysicsList() override = default;
-
-  // Costruisce i processi dalle physics registrate
-  void ConstructProcess() override;
-
-  // Tagli di produzione (deve esistere anche nell'header!)
   void SetCuts() override;
+  void ConstructProcess() override;
 };
+} // namespace LZSim
 
-} // namespace Test
+#endif
