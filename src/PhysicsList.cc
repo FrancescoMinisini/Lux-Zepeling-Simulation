@@ -30,10 +30,11 @@ void PhysicsList::SetCuts() {
 void PhysicsList::ConstructProcess() {
   G4VModularPhysicsList::ConstructProcess();
   auto* op = G4OpticalParameters::Instance();
-  op->SetScintByParticleType(false); // Scintillation for all particles
+  op->SetScintByParticleType(false);
   op->SetScintTrackSecondariesFirst(true);
   op->SetCerenkovTrackSecondariesFirst(false);
-  op->SetScintVerboseLevel(1); // Debug scintillation
+  op->SetCerenkovMaxPhotonsPerStep(0); // Disable Cerenkov
+  op->SetScintVerboseLevel(2); // Detailed scintillation debug
   op->SetCerenkovVerboseLevel(0);
 }
 } // namespace Test

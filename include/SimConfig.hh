@@ -9,7 +9,7 @@ struct SimConfig {
   struct Geometry {
     G4double lxe_radius = 30*cm;
     G4double lxe_height = 50*cm;
-    G4double gxe_height = 0.1*cm; // Reduced to minimize TIR
+    G4double gxe_height = 0.1*cm;
     G4double wall_thick = 1*cm;
     G4double pmt_thick = 2*mm;
   } geom;
@@ -17,14 +17,14 @@ struct SimConfig {
   struct Optics {
     G4bool enable_optics = true;
     G4double rindex = 1.69;
-    G4double abs_length = 1000.*m; // Maximized to reduce losses
-    G4double rayleigh_length = 100.*cm; // Reduced scattering
-    G4double scint_yield_perMeV = 200000./MeV; // High for debugging
+    G4double abs_length = 1000.*m;
+    G4double rayleigh_length = 500.*cm; // Increased to reduce scattering
+    G4double scint_yield_perMeV = 200000./MeV;
     G4double scint_fast_time = 2.2*ns;
     G4double scint_yield_ratio = 1.0;
     G4double eV_min = 6.8*eV;
     G4double eV_max = 7.2*eV;
-    G4double pmt_qe = 1.0; // 100% QE for debugging
+    G4double pmt_qe = 1.0;
   } opt;
   // --- Generator (WIMP-like Xe recoil + categorie)
   struct Generator {
@@ -36,8 +36,8 @@ struct SimConfig {
     G4double E_max = 30.*keV;
     // Gamma calib
     G4double gamma_energy = 662.*keV;
-    G4ThreeVector gamma_position = G4ThreeVector(0.,0.,-20.*cm);
-    G4ThreeVector gamma_direction = G4ThreeVector(0.,0., 1.);
+    G4ThreeVector gamma_position = G4ThreeVector(0.,0.,0.); // Centered
+    G4ThreeVector gamma_direction = G4ThreeVector(0.,0.,1.);
     // Categoria: 0..3 (Single, DoubleNear, DoubleFar, Triple)
     G4int event_category = 0;
     // Controlli spaziotemporali
