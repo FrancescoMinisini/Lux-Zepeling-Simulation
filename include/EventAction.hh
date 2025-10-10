@@ -1,7 +1,7 @@
 //
 
 //
-/// \file B1/include/EventAction.hh
+/// \file Test/include/EventAction.hh
 /// \brief Definition of the B1::EventAction class
 
 #ifndef B1EventAction_h
@@ -9,6 +9,7 @@
 
 #include "G4UserEventAction.hh"
 #include "globals.hh"
+#include "PMTSensitiveDetector.hh"
 
 namespace Test
 {
@@ -31,6 +32,7 @@ class EventAction : public G4UserEventAction
   private:
     RunAction* fRunAction = nullptr;
     G4double   fEdep = 0.;
+    PMTSensitiveDetector* fPMTSD     = nullptr;
 };
 
 }

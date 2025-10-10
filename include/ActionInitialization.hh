@@ -1,7 +1,7 @@
 //
 
 //
-/// \file B1/include/ActionInitialization.hh
+/// \file Test/include/ActionInitialization.hh
 /// \brief Definition of the B1::ActionInitialization class
 
 #ifndef B1ActionInitialization_h

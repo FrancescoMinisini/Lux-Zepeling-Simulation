@@ -1,0 +1,6 @@
+/control/execute macros/common_batch.mac
+
+/analysis/setDefaultFileType csv
+/analysis/setFileName ../outputs/wimp_triple
+
+/run/beamOn 5000

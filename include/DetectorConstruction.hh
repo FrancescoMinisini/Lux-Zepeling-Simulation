@@ -1,7 +1,7 @@
 //
 
 //
-/// \file B1/include/DetectorConstruction.hh
+/// \file Test/include/DetectorConstruction.hh
 /// \brief Definition of the B1::DetectorConstruction class
 
 #ifndef B1DetectorConstruction_h
@@ -25,6 +25,7 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     ~DetectorConstruction() override = default;
 
     G4VPhysicalVolume* Construct() override;
+    void ConstructSDandField() override;
 
     G4LogicalVolume* GetScoringVolume() const { return fScoringVolume; }
 

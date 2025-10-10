@@ -1,0 +1,6 @@
+/control/execute macros/common_batch.mac
+
+/analysis/setDefaultFileType csv
+/analysis/setFileName ../outputs/wimp_double_far
+
+/run/beamOn 5000

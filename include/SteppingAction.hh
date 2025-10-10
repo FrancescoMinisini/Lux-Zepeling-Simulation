@@ -1,7 +1,7 @@
 //
 
 //
-/// \file B1/include/SteppingAction.hh
+/// \file Test/include/SteppingAction.hh
 /// \brief Definition of the B1::SteppingAction class
 
 #ifndef B1SteppingAction_h

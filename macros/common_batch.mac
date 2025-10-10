@@ -1,0 +1,9 @@
+/run/verbose 1
+/event/verbose 0
+/tracking/verbose 0
+
+# forza single thread prima dell'initialize
+/run/numberOfThreads 1
+
+# inizializza il kernel (obbligatorio prima di /run/beamOn)
+/run/initialize
