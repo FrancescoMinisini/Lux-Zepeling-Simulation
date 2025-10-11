@@ -1,3 +1,4 @@
+// src/DetectorConstruction.cc
 #include "DetectorConstruction.hh"
 #include "SimConfig.hh"
 #include "G4RunManager.hh"
@@ -98,8 +99,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     auto* mptTopPMT = new G4MaterialPropertiesTable();
     const G4int N = 2;
     G4double E[N] = {o.eV_min, o.eV_max};
-    G4double eff[N] = {o.pmt_qe, o.pmt_qe};
-    G4double trans[N] = {1.0, 1.0};
+    G4double eff[N] = {1.0, 1.0};  // EFFICIENCY=1.0
+    G4double trans[N] = {1.0, 1.0};  // TRANSMITTANCE=1.0
     mptTopPMT->AddProperty("EFFICIENCY", E, eff, N);
     mptTopPMT->AddProperty("TRANSMITTANCE", E, trans, N);
     opTopPMT->SetMaterialPropertiesTable(mptTopPMT);

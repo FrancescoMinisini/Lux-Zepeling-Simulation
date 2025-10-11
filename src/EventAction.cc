@@ -1,3 +1,4 @@
+// src/EventAction.cc
 #include "EventAction.hh"
 #include "RunAction.hh"
 #include "PMTSensitiveDetector.hh"
@@ -30,7 +31,7 @@ void EventAction::EndOfEventAction(const G4Event* evt) {
       t_first_top = *std::min_element(vt.begin(), vt.end()) / ns;
       t_mean_top = std::accumulate(vt.begin(), vt.end(), 0.0) / vt.size() / ns;
     } else {
-      t_first_top = t_mean_top = std::numeric_limits<double>::quiet_NaN();
+      t_first_top = t_mean_top = 0.;  // Imposta a 0 invece di NaN
     }
   }
   auto* ana = G4AnalysisManager::Instance();

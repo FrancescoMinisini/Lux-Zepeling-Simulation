@@ -1,6 +1,7 @@
 /control/verbose 1
 /run/verbose 1
-/analysis/setDefaultFileType root
+/run/numberOfThreads 1
+/analysis/setDefaultFileType csv
 /analysis/setFileName ../outputs/lz_s2
 /run/initialize
-/run/beamOn 10000  # Number of events
+/run/beamOn 1000  # Number of events

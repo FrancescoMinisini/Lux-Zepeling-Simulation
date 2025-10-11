@@ -13,4 +13,5 @@ bin_centers = (bins[:-1] + bins[1:]) / 2
 popt, _ = curve_fit(gaussian, bin_centers, hist)
 plt.hist(times, bins=50)
 plt.plot(bin_centers, gaussian(bin_centers, *popt), 'r--')
-plt.savefig('analysis_out/s2_gaussian.png')
+plt.show()
+# plt.savefig('analysis_out/s2_gaussian.png')
