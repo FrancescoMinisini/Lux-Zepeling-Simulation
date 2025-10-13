@@ -1,3 +1,4 @@
+// ===== FILE: src/PhysicsList.cc =====
 #include "PhysicsList.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4DecayPhysics.hh"
@@ -26,7 +27,7 @@ void PhysicsList::SetCuts() {
 void PhysicsList::ConstructProcess() {
   G4VModularPhysicsList::ConstructProcess();
   auto* op = G4OpticalParameters::Instance();
-  op->SetScintByParticleType(true);  // Enable for electrons
+  op->SetScintByParticleType(false);  // Set to false to use default yield
   op->SetScintTrackSecondariesFirst(true);
   op->SetCerenkovTrackSecondariesFirst(false);
   op->SetCerenkovMaxPhotonsPerStep(0);

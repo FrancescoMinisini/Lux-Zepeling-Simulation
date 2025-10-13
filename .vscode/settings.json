@@ -1,6 +1,7 @@
 {
     "cmake.sourceDirectory": "/mnt/c/Users/Francerso/source_vsc/UIS/Lux-Zepeling-Simulation/Test",
     "files.associations": {
-        "*.icc": "cpp"
+        "*.icc": "cpp",
+        "new": "cpp"
     }
 }

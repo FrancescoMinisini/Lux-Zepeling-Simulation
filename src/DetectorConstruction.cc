@@ -1,4 +1,4 @@
-// src/DetectorConstruction.cc
+// ===== FILE: src/DetectorConstruction.cc =====
 #include "DetectorConstruction.hh"
 #include "SimConfig.hh"
 #include "G4RunManager.hh"
@@ -16,6 +16,13 @@
 #include "G4OpticalSurface.hh"
 #include "G4LogicalBorderSurface.hh"
 #include "PMTSensitiveDetector.hh"
+#include "G4UniformElectricField.hh"
+#include "G4FieldManager.hh"
+#include "G4ChordFinder.hh"
+#include "G4EqMagElectricField.hh"
+#include "G4ClassicalRK4.hh"
+#include "G4MagIntegratorDriver.hh"
+#include "G4TransportationManager.hh"
 
 namespace LZSim {
 G4VPhysicalVolume* DetectorConstruction::Construct() {
@@ -40,7 +47,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
 
   // --- Optical properties ---
   if (cfg.opt.enable_optics) {
-    // GXe with scintillation (high yield for S2 proxy)
+    // GXe with scintillation (high yield for EL proxy)
     {
       auto* mpt = new G4MaterialPropertiesTable();
       const G4int N = 2;
@@ -122,5 +129,22 @@ void DetectorConstruction::ConstructSDandField() {
   sdman->AddNewDetector(pmtSD);
   auto* topLV = G4LogicalVolumeStore::GetInstance()->GetVolume("TopPMT");
   if (topLV) topLV->SetSensitiveDetector(pmtSD);
+
+  // Add electric field to GXe
+  auto& cfg = SimConfig::Get();
+  auto* logicGXe = G4LogicalVolumeStore::GetInstance()->GetVolume("GXe");
+  if (logicGXe && cfg.field.gas_field > 0.) {
+    G4ElectricField* electricField = new G4UniformElectricField(G4ThreeVector(0., 0., cfg.field.gas_field));
+    G4EqMagElectricField* equation = new G4EqMagElectricField(electricField);
+    G4int nvar = 8;
+    G4MagIntegratorStepper* stepper = new G4ClassicalRK4(equation, nvar);
+    G4double minStep = 0.01 * mm;
+    G4VIntegrationDriver* driver = new G4MagInt_Driver(minStep, stepper, stepper->GetNumberOfVariables());
+    G4ChordFinder* chordFinder = new G4ChordFinder(driver);
+    G4FieldManager* fieldMgr = new G4FieldManager(electricField);
+    fieldMgr->SetDetectorField(electricField);
+    fieldMgr->SetChordFinder(chordFinder);
+    logicGXe->SetFieldManager(fieldMgr, true);  // Apply to all daughters as well
+  }
 }
 } // namespace LZSim
