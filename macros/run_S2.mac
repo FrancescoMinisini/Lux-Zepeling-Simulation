@@ -1,7 +1,9 @@
-/control/verbose 1
-/run/verbose 1
+/control/verbose 2
+/run/verbose 2
+/tracking/verbose 2  # Mostra tracks primari, secondari (incl. fotoni), steps
+/event/verbose 1
 /run/numberOfThreads 1
 /analysis/setDefaultFileType csv
 /analysis/setFileName ../outputs/lz_s2
 /run/initialize
-/run/beamOn 1000  # Number of events
+/run/beamOn 100

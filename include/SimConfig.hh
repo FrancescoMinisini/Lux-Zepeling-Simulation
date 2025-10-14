@@ -35,7 +35,7 @@ struct SimConfig {
   } gen;
 
   struct Field {
-    G4double gas_field = 5. * kilovolt / cm;  // Electric field in gas for drift
+    G4double gas_field = -5. * kilovolt / cm;  // Electric field in gas for drift
   } field;
 
   static SimConfig& Get() {

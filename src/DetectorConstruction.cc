@@ -43,29 +43,31 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
   // --- Materials ---
   G4double gas_density = 0.0055 * g / cm3;  // Approx for Xe gas at 1 atm; adjust for LZ pressure
   auto* gxe_mat = new G4Material("GXe", 54., 131.29 * g / mole, gas_density, kStateGas, 293. * kelvin, 1. * atmosphere);
+  gxe_mat->GetIonisation()->SetMeanExcitationEnergy(22 * eV);  // Correct for gas Xe, adjust for proxy EL
   auto* pmt_mat = nist->FindOrBuildMaterial("G4_SILICON_DIOXIDE");
 
   // --- Optical properties ---
   if (cfg.opt.enable_optics) {
     // GXe with scintillation (high yield for EL proxy)
-    {
-      auto* mpt = new G4MaterialPropertiesTable();
-      const G4int N = 2;
-      G4double E[N] = {o.eV_min, o.eV_max};
-      G4double RIndex[N] = {o.rindex, o.rindex};
-      G4double AbsLen[N] = {o.abs_length, o.abs_length};
-      G4double Rayleigh[N] = {o.rayleigh_length, o.rayleigh_length};
-      G4double FastComp[N] = {1., 1.};
-      mpt->AddProperty("RINDEX", E, RIndex, N, true);
-      mpt->AddProperty("ABSLENGTH", E, AbsLen, N, true);
-      mpt->AddProperty("RAYLEIGH", E, Rayleigh, N, true);
-      mpt->AddProperty("FASTCOMPONENT", E, FastComp, N, true);
-      mpt->AddConstProperty("SCINTILLATIONYIELD", o.scint_yield_perMeV, true);
-      mpt->AddConstProperty("RESOLUTIONSCALE", 1.0, true);
-      mpt->AddConstProperty("FASTTIMECONSTANT", o.scint_fast_time, true);
-      mpt->AddConstProperty("YIELDRATIO", o.scint_yield_ratio, true);
-      gxe_mat->SetMaterialPropertiesTable(mpt);
-    }
+{
+  auto* mpt = new G4MaterialPropertiesTable();
+  const G4int N = 2;
+  G4double E[N] = {o.eV_min, o.eV_max};
+  G4double RIndex[N] = {o.rindex, o.rindex};
+  G4double AbsLen[N] = {o.abs_length, o.abs_length};
+  G4double Rayleigh[N] = {o.rayleigh_length, o.rayleigh_length};
+  G4double FastComp[N] = {1., 1.};
+  mpt->AddProperty("RINDEX", E, RIndex, N, true);
+  mpt->AddProperty("ABSLENGTH", E, AbsLen, N, true);
+  mpt->AddProperty("RAYLEIGH", E, Rayleigh, N, true);
+  mpt->AddProperty("FASTCOMPONENT", E, FastComp, N, true);
+  mpt->AddConstProperty("SCINTILLATIONYIELD1", o.scint_yield_perMeV, true);  // Generale
+  mpt->AddConstProperty("ELECTRONSCINTILLATIONYIELD1", o.scint_yield_perMeV, true);  // Specifico per e-, obbligatorio con true
+  mpt->AddConstProperty("RESOLUTIONSCALE1", 1.0, true);
+  mpt->AddConstProperty("FASTTIMECONSTANT1", o.scint_fast_time, true);
+  mpt->AddConstProperty("YIELDRATIO1", o.scint_yield_ratio, true);
+  gxe_mat->SetMaterialPropertiesTable(mpt);
+}
     // RINDEX for World/PMT
     {
       const G4int N = 2;
@@ -98,21 +100,23 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
                                       logicTopPMT, "TopPMT", logicWorld, false, 0, checkOverlaps);
 
   // --- PMT optical surface ---
-  if (cfg.opt.enable_optics) {
-    auto* opTopPMT = new G4OpticalSurface("TopPMTSurf");
-    opTopPMT->SetType(dielectric_dielectric);
-    opTopPMT->SetModel(unified);
-    opTopPMT->SetFinish(polished);
-    auto* mptTopPMT = new G4MaterialPropertiesTable();
-    const G4int N = 2;
-    G4double E[N] = {o.eV_min, o.eV_max};
-    G4double eff[N] = {1.0, 1.0};  // EFFICIENCY=1.0
-    G4double trans[N] = {1.0, 1.0};  // TRANSMITTANCE=1.0
-    mptTopPMT->AddProperty("EFFICIENCY", E, eff, N);
-    mptTopPMT->AddProperty("TRANSMITTANCE", E, trans, N);
-    opTopPMT->SetMaterialPropertiesTable(mptTopPMT);
-    new G4LogicalBorderSurface("GXeTopPMTBorder", physGXe, physTopPMT, opTopPMT);
-  }
+if (cfg.opt.enable_optics) {
+  auto* opTopPMT = new G4OpticalSurface("TopPMTSurf");
+  opTopPMT->SetType(dielectric_metal);  // Cambiato da dielectric_dielectric
+  opTopPMT->SetModel(unified);
+  opTopPMT->SetFinish(polished);
+  auto* mptTopPMT = new G4MaterialPropertiesTable();
+  const G4int N = 2;
+  G4double E[N] = {o.eV_min, o.eV_max};
+  G4double eff[N] = {o.pmt_qe, o.pmt_qe};  // Cambiato da {1.0, 1.0} per QE realistica
+  G4double trans[N] = {1.0, 1.0};  // TRANSMITTANCE=1.0 (invariato)
+  G4double refl[N] = {0.0, 0.0};  // Aggiunto REFLECTIVITY=0.0
+  mptTopPMT->AddProperty("EFFICIENCY", E, eff, N);
+  mptTopPMT->AddProperty("TRANSMITTANCE", E, trans, N);
+  mptTopPMT->AddProperty("REFLECTIVITY", E, refl, N);  // Aggiunta qui
+  opTopPMT->SetMaterialPropertiesTable(mptTopPMT);
+  new G4LogicalBorderSurface("GXeTopPMTBorder", physGXe, physTopPMT, opTopPMT);
+}
 
   // --- Visuals ---
   logicWorld->SetVisAttributes(new G4VisAttributes(G4Colour(0, 0, 0, 0)));
