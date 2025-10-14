@@ -22,7 +22,7 @@ struct SimConfig {
     G4double rindex = 1.001;  // For gas Xe
     G4double abs_length = 100. * m;
     G4double rayleigh_length = 10. * cm;
-    G4double scint_yield_perMeV = 1e6;  // Increased for more photons as EL proxy
+    G4double scint_yield_perMeV = 100.;  // Increased for more photons as EL proxy
     G4double scint_fast_time = 2. * ns;
     G4double scint_yield_ratio = 1.0;
     G4double pmt_qe = 0.3;
