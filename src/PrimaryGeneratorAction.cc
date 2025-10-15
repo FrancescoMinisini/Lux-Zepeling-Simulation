@@ -23,9 +23,23 @@ PrimaryGeneratorAction::~PrimaryGeneratorAction() {
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent) {
   auto& cfg = SimConfig::Get();
   auto& gen = cfg.gen;
-  fParticleGun->SetParticleEnergy(gen.electron_energy);
-  fParticleGun->SetParticlePosition(gen.electron_position);
-  fParticleGun->SetParticleMomentumDirection(gen.electron_direction);
-  fParticleGun->GeneratePrimaryVertex(anEvent);
+  for (G4int i = 0; i < gen.n_electrons; ++i) {
+    // Posizione random per simulare pacchetto (con diffusione iniziale piccola)
+    G4double dx = G4RandGauss::shoot(0., 0.1 * mm);  // Diffusione trasversale iniziale
+    G4double dy = G4RandGauss::shoot(0., 0.1 * mm);
+    G4ThreeVector pos = gen.electron_position + G4ThreeVector(dx, dy, 0.);
+    fParticleGun->SetParticlePosition(pos);
+  
+    // Direzione con piccola spread
+    G4double theta = G4RandGauss::shoot(0., 0.01);  // Piccolo angolo
+    G4ThreeVector dir = G4ThreeVector(gen.electron_direction).rotate(theta, G4ThreeVector(1,0,0));
+    fParticleGun->SetParticleMomentumDirection(dir);
+  
+    // Energia random per variabilità (opzionale)
+    G4double e_energy = G4RandGauss::shoot(gen.electron_energy, 0.1 * gen.electron_energy);
+    fParticleGun->SetParticleEnergy(e_energy);
+  
+    fParticleGun->GeneratePrimaryVertex(anEvent);
+  }
 }
 } // namespace LZSim

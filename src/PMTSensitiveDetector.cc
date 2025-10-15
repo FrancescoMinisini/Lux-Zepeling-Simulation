@@ -28,12 +28,12 @@ G4bool PMTSensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*) {
   G4double t_ns = pre->GetGlobalTime() / ns;
   G4double energy_eV = pre->GetKineticEnergy() / eV;
   G4String creator = track->GetCreatorProcess() ? track->GetCreatorProcess()->GetProcessName() : "none";
-  // G4cout << "Photon hit " << name << " at t=" << t_ns << " ns, energy=" << energy_eV << " eV, creator=" << creator
-  //        << ", position=(" << pre->GetPosition().x() / mm << "," << pre->GetPosition().y() / mm << "," << pre->GetPosition().z() / mm << ") mm" << G4endl;
-  // if (name == "TopPMT") {
-  //   G4cout << "Photon DETECTED in " << name << " at t=" << t_ns << " ns" << G4endl;
-  //   times_top_.push_back(t_ns);
-  // }
+  G4cout << "Photon hit " << name << " at t=" << t_ns << " ns, energy=" << energy_eV << " eV, creator=" << creator
+         << ", position=(" << pre->GetPosition().x() / mm << "," << pre->GetPosition().y() / mm << "," << pre->GetPosition().z() / mm << ") mm" << G4endl;
+  if (name == "TopPMT") {
+    G4cout << "Photon DETECTED in " << name << " at t=" << t_ns << " ns" << G4endl;
+    times_top_.push_back(t_ns);
+  }
   track->SetTrackStatus(fStopAndKill);
   return true;
 }

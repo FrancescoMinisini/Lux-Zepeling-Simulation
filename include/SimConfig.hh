@@ -9,7 +9,7 @@ namespace LZSim {
 struct SimConfig {
   struct Geometry {
     G4double gxe_radius = 50. * cm;
-    G4double gxe_height = 1.0 * cm;  // Fix: Aumentato per drift full
+    G4double gxe_height = 10. * cm;  // Aumentato per drift lungo (~10 μs)
     G4double wall_thick = 1.0 * cm;
     G4double pmt_thick = 0.5 * cm;
   } geom;
@@ -31,11 +31,18 @@ struct SimConfig {
     G4double electron_energy = 5. * keV;
     G4ThreeVector electron_position = {0, 0, -0.5 * cm};  // Fix: Bottom di GXe (per height=1 cm)
     G4ThreeVector electron_direction = {0, 0, 1};
+    G4int n_electrons = 50;  // Numero e- per evento (da lit: tipico per keV in Xe)
   } gen;
 
   struct Field {
     G4double gas_field = -1. * kilovolt / cm;  // Fix: Valore tipico per EL, negativo per drift up
   } field;
+
+  struct ELParams {
+    G4double el_gain_per_mm = 500.;  // Fotoni per mm di drift per e- (da lit: ~100-500)
+    G4double v_drift_mm_per_ns = 0.001;  // 1 mm/μs = 0.001 mm/ns (da lit: ~1 mm/μs a 1 kV/cm)
+    G4double diffusion_const_cm2_per_s = 0.1;  // D_L (da lit: ~0.1 cm²/s)
+  } el;
 
   static SimConfig& Get() {
     static SimConfig instance;
