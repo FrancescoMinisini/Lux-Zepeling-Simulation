@@ -39,7 +39,7 @@ $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
 
 $(EXEC): | $(BUILD_DIR)
-	@cd $(BUILD_DIR) && $(CMAKE) -DGeant4_DIR=$(GEANT4_DIR) ../
+	@cd $(BUILD_DIR) && $(CMAKE) -DGeant4_DIR=$(GEANT4_DIR) ../ -DGEANT4_BUILD_MULTITHREADED=ON
 	@$(MAKE) -C $(BUILD_DIR) -j$(JOBS)
 
 $(OUTPUTS_DIR):
@@ -47,9 +47,14 @@ $(OUTPUTS_DIR):
 
 runs: s2
 
-s2: $(EXEC) | $(OUTPUTS_DIR)
+s2_verbose: $(EXEC) | $(OUTPUTS_DIR)
 	@echo "==> Running S2 simulation"
 	@cd $(BUILD_DIR) && ./LZSim ../$(MACROS_DIR)/run_s2.mac > ../LOG.txt
+	@echo "==> Output: $(S2_ROOT)"
+
+s2: $(EXEC) | $(OUTPUTS_DIR)
+	@echo "==> Running S2 simulation"
+	@cd $(BUILD_DIR) && ./LZSim ../$(MACROS_DIR)/run_s2.mac
 	@echo "==> Output: $(S2_ROOT)"
 
 analyze:

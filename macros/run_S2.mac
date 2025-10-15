@@ -4,8 +4,8 @@
 /tracking/verbose 0
 /process/optical/verbose 0
 /process/optical/scintillation/verbose 0
-/run/numberOfThreads 1
+/run/numberOfThreads 10
 /analysis/setDefaultFileType csv
 /analysis/setFileName ../outputs/lz_s2
 /run/initialize
-/run/beamOn 1
+/run/beamOn 10
