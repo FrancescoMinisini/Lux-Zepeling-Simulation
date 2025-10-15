@@ -9,7 +9,7 @@
 namespace LZSim {
 PhysicsList::PhysicsList() : G4VModularPhysicsList() {
   defaultCutValue = 0.1 * mm;
-  SetVerboseLevel(1);
+  SetVerboseLevel(0);
   RegisterPhysics(new G4DecayPhysics());
   RegisterPhysics(new G4EmStandardPhysics_option4());  // Good for low-E electrons
   RegisterPhysics(new G4IonPhysics());

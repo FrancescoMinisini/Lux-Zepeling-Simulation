@@ -1,100 +1,94 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-import numpy as np
-import glob
-import os
-import csv
+from pathlib import Path
 
-def gaussian(x, amp, mean, sigma):
-    return amp * np.exp(-(x - mean)**2 / (2 * sigma**2))
+# === CONFIG ===
+INPUT_FILE = Path("outputs/photon_times.csv")
+OUTPUT_PLOT = Path("analysis_out/s2_gaussian.png")
+MIN_PHOTONS_PER_EVENT = 20      # per avere solo eventi "ricchi"
+S1_CUTOFF_NS = 0.5              # rimuove eventuale S1 (solo fotoni dopo 0.5 ns)
+NBINS = 6000               # istogramma temporale
 
-# Merge the lz_s2 per-thread files
-output_dir = 'outputs/'
-file_pattern = 'lz_s2_t*.csv'
-merged_file = os.path.join(output_dir, 'lz_s2_merged.csv')
+# === LOAD DATA ===
+df = pd.read_csv(INPUT_FILE, names=['event_id', 'pmt', 'time_ns'])
+df = df[df['pmt'] == 'TopPMT'].copy()
 
-files = sorted(glob.glob(os.path.join(output_dir, file_pattern)))
+if df.empty:
+    raise ValueError("❌ Nessun dato del TopPMT trovato nel CSV.")
 
-if not files:
-    print("No lz_s2 files found to merge.")
-else:
-    with open(merged_file, 'w', newline='') as outfile:
-        writer = csv.writer(outfile)
-        for i, filename in enumerate(files):
-            with open(filename, 'r', newline='') as infile:
-                reader = csv.reader(infile)
-                if i == 0:
-                    # No header in Geant4 CSV, so just write rows
-                    writer.writerows(reader)
-                else:
-                    writer.writerows(reader)  # All files have no header
-    print(f"Merged {len(files)} files into {merged_file}.")
+print(f"✅ Letti {len(df)} fotoni da {df['event_id'].nunique()} eventi.")
 
-# Load the merged lz_s2
-df_lz = pd.read_csv(merged_file, names=['event_id', 'nPhotTop', 'Edep_GXe', 't_first_top_ns', 't_mean_top_ns'])
+# === FILTRO S1 (se presente) ===
+df = df[df['time_ns'] > S1_CUTOFF_NS]
 
-# Load photon_times
-df_photon = pd.read_csv(os.path.join(output_dir, 'photon_times.csv'), names=['event_id', 'pmt', 'time_ns'])
+# === ALLINEAMENTO PER EVENTO ===
+# prendo il primo fotone per ogni evento come t0
+t0 = df.groupby('event_id')['time_ns'].min()
+df = df.join(t0, on='event_id', rsuffix='_t0')
+df['t_aligned'] = df['time_ns'] - df['time_ns_t0']
 
-# Merge to get t_mean per event
-df = pd.merge(df_photon, df_lz[['event_id', 't_mean_top_ns']], on='event_id', how='left')
+# === EVENTI CON SUFFICIENTI FOTONI ===
+counts = df.groupby('event_id').size()
+good_events = counts[counts >= MIN_PHOTONS_PER_EVENT].index
+df = df[df['event_id'].isin(good_events)]
 
-# Compute relative times
-df['rel_time_ns'] = df['time_ns'] - df['t_mean_top_ns']
+if df.empty:
+    raise ValueError("❌ Nessun evento con abbastanza fotoni dopo il filtraggio.")
 
-# Drop any rows where merge failed (NaN), though unlikely
-df = df.dropna(subset=['rel_time_ns'])
+# === COSTRUISCI ISTOGRAMMA GLOBALE ===
+times = df['t_aligned'].to_numpy()
+hist, bins = np.histogram(times, bins=NBINS)
+bin_centers = 0.5 * (bins[:-1] + bins[1:])
+bin_width = bins[1] - bins[0]
 
-# Histogram and fit
-times = df['rel_time_ns'].values
-hist, bins = np.histogram(times, bins=50)
-bin_centers = (bins[:-1] + bins[1:]) / 2
-popt, _ = curve_fit(gaussian, bin_centers, hist, p0=[max(hist), 0, 1])  # Initial guess centered at 0
-plt.figure()
-plt.hist(times, bins=50, label='Data')
-plt.plot(bin_centers, gaussian(bin_centers, *popt), 'r--', label='Gaussian fit')
-plt.title('S2 Signal Time Distribution (Relative to Mean)')
-plt.xlabel('Relative Time (ns)')
-plt.ylabel('Counts')
+# ... (parte iniziale invariata: load, filtro, allineamento) ...
+
+# === MODELLO ESPONENZIALE ===
+def exp_decay(x, amp, tau, c0):
+    return amp * np.exp(-x / tau) + c0
+
+# Stime iniziali (solo x>0 per evitare fit su picco=0)
+mask = bin_centers > 0
+amp0 = hist.max()
+tau0 = 2.0  # Dal tuo config scint_time
+c00 = hist.min()
+sigma_y = np.sqrt(np.maximum(hist, 1.0))
+
+# === FIT ===
+try:
+    popt, pcov = curve_fit(
+        exp_decay, bin_centers[mask], hist[mask],
+        p0=[amp0, tau0, c00],
+        sigma=sigma_y[mask], absolute_sigma=True,
+        bounds=([0, 0.1, 0], [np.inf, 10, np.inf])
+    )
+    amp, tau, c0 = popt
+except RuntimeError:
+    raise RuntimeError("⚠️ Fit non convergente.")
+
+# === PLOT ===
+plt.figure(figsize=(7, 5))
+plt.bar(bin_centers, hist, width=bin_width, align='center', alpha=0.6, label='data')
+xfit = np.linspace(0, bin_centers.max(), 500)
+plt.plot(xfit, exp_decay(xfit, *popt), 'r--', label=f'fit amp={amp:.2f}, τ={tau:.2f} ns')
+plt.xlabel("t aligned [ns]")
+plt.ylabel("counts / bin")
 plt.legend()
+plt.tight_layout()
 plt.show()
-os.makedirs('analysis_out', exist_ok=True)
-plt.savefig('analysis_out/s2_gaussian.png')
 
-# Additional plots for everything
-# Histogram of nPhotTop
-plt.figure()
-plt.hist(df_lz['nPhotTop'], bins=50)
-plt.title('Number of Photons per Event (Top PMT)')
-plt.xlabel('nPhotTop')
-plt.ylabel('Events')
-plt.show()
-plt.savefig('analysis_out/nPhotTop_hist.png')
-
-# Histogram of Edep_GXe
-plt.figure()
-plt.hist(df_lz['Edep_GXe'], bins=50)
-plt.title('Energy Deposited in GXe per Event')
-plt.xlabel('Edep (MeV)')
-plt.ylabel('Events')
-plt.show()
-plt.savefig('analysis_out/Edep_hist.png')
-
-# Histogram of t_mean_top_ns
-plt.figure()
-plt.hist(df_lz['t_mean_top_ns'], bins=50)
-plt.title('Mean Photon Time per Event')
-plt.xlabel('t_mean_top_ns (ns)')
-plt.ylabel('Events')
-plt.show()
-plt.savefig('analysis_out/t_mean_hist.png')
-
-# Histogram of t_first_top_ns
-plt.figure()
-plt.hist(df_lz['t_first_top_ns'], bins=50)
-plt.title('First Photon Time per Event')
-plt.xlabel('t_first_top_ns (ns)')
-plt.ylabel('Events')
-plt.show()
-plt.savefig('analysis_out/t_first_hist.png')
+print("---- FIT RESULT ----")
+print(f"Amplitude: {amp:.2f}")
+print(f"Tau (decay): {tau:.3f} ns")
+print(f"Baseline:  {c0:.3f} counts/bin")
+# === OUTPUT ===
+print("---- FIT RESULT ----")
+print(f"Amplitude: {amp:.2f}")
+print(f"Mean:      {mean:.3f} ns")
+print(f"Sigma:     {sigma:.3f} ns")
+print(f"Baseline:  {c0:.3f} counts/bin")
+OUTPUT_PLOT.parent.mkdir(parents=True, exist_ok=True)
+plt.savefig(OUTPUT_PLOT)
+print(f"📈 Grafico salvato in: {OUTPUT_PLOT}")

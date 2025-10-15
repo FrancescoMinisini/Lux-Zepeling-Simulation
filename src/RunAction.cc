@@ -15,7 +15,7 @@ G4Run* RunAction::GenerateRun() {
 void RunAction::BeginOfRunAction(const G4Run*) {
   G4AccumulableManager::Instance()->Reset();
   auto* ana = G4AnalysisManager::Instance();
-  ana->SetVerboseLevel(1);
+  ana->SetVerboseLevel(0);
   ana->CreateNtuple("s2", "S2 Signal");
   ana->CreateNtupleIColumn(0, "event_id");
   ana->CreateNtupleIColumn(0, "nPhotTop");

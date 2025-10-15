@@ -15,6 +15,7 @@ int main(int argc, char** argv) {
   auto* visManager = new G4VisExecutive();
   visManager->Initialize();
   auto* UImanager = G4UImanager::GetUIpointer();
+  UImanager->SetVerboseLevel(0);
   if (ui) {
     UImanager->ApplyCommand("/control/execute init_vis.mac");
     ui->SessionStart();
