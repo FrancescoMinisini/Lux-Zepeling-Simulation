@@ -14,7 +14,7 @@ PhysicsList::PhysicsList() : G4VModularPhysicsList() {
   RegisterPhysics(new G4EmStandardPhysics_option4());  // Good for low-E electrons
   RegisterPhysics(new G4IonPhysics());
   auto* opt = new G4OpticalPhysics();
-  opt->SetVerboseLevel(1);
+  opt->SetVerboseLevel(0);
   RegisterPhysics(opt);
 }
 
@@ -30,7 +30,7 @@ void PhysicsList::ConstructProcess() {
   op->SetScintTrackSecondariesFirst(true);
   op->SetCerenkovTrackSecondariesFirst(false);
   op->SetCerenkovMaxPhotonsPerStep(0);
-  op->SetScintVerboseLevel(2);
+  op->SetScintVerboseLevel(0);
   op->SetCerenkovVerboseLevel(0);
 }
 } // namespace LZSim
