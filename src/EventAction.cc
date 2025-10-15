@@ -1,4 +1,3 @@
-// src/EventAction.cc
 #include "EventAction.hh"
 #include "RunAction.hh"
 #include "PMTSensitiveDetector.hh"
@@ -14,8 +13,10 @@
 namespace LZSim {
 EventAction::EventAction(RunAction* runAction) : fRunAction(runAction) {}
 
-void EventAction::BeginOfEventAction(const G4Event*) {
+void EventAction::BeginOfEventAction(const G4Event* evt) {
   fEdep = 0.;
+  // Optional: Print event count at start
+  G4cout << "Starting Event Number: " << evt->GetEventID() << G4endl;
 }
 
 void EventAction::EndOfEventAction(const G4Event* evt) {
@@ -31,7 +32,7 @@ void EventAction::EndOfEventAction(const G4Event* evt) {
       t_first_top = *std::min_element(vt.begin(), vt.end()) / ns;
       t_mean_top = std::accumulate(vt.begin(), vt.end(), 0.0) / vt.size() / ns;
     } else {
-      t_first_top = t_mean_top = 0.;  // Imposta a 0 invece di NaN
+      t_first_top = t_mean_top = 0.;
     }
   }
   auto* ana = G4AnalysisManager::Instance();
@@ -43,5 +44,8 @@ void EventAction::EndOfEventAction(const G4Event* evt) {
   ana->FillNtupleDColumn(ntupleId, 4, t_mean_top);
   ana->AddNtupleRow(ntupleId);
   if (sd) sd->Clear();
+
+  // Add custom event counter output here (e.g., to console or log)
+  G4cout << "Completed Event Number: " << evt->GetEventID() + 1 << " (out of total requested)" << G4endl;  // +1 for 1-based counting if preferred
 }
 } // namespace LZSim
