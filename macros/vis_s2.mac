@@ -1,0 +1,33 @@
+/control/verbose 2
+/run/verbose 2
+/event/verbose 0  # Reduce unnecessary output
+/tracking/verbose 0
+/process/optical/verbose 0
+/process/optical/scintillation/verbose 0
+
+# Open visualization driver (OpenGL for interactive)
+ /vis/open OGL 800x800-0+0
+
+# Set viewpoint (side view for cylinder)
+ /vis/viewer/set/viewpointThetaPhi 90 0
+
+# Draw geometry
+ /vis/drawVolume
+
+# Add trajectories (smooth for better visualization)
+ /vis/scene/add/trajectories smooth
+
+# Color tracks by particle type
+ /vis/modeling/trajectories/create/drawByParticleID
+ /vis/modeling/trajectories/drawByParticleID-0/set e- red  # Electron track in red
+ /vis/modeling/trajectories/drawByParticleID-0/set opticalphoton green  # Photons in green
+
+# Accumulate over events (keep tracks from multiple events if needed)
+ /vis/scene/endOfEventAction accumulate
+ /vis/scene/endOfRunAction accumulate
+
+# Initialize kernel
+ /run/initialize
+
+# Run 1-10 events for visualization (adjust as needed)
+ /run/beamOn 1

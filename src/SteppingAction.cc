@@ -5,6 +5,7 @@
 #include "G4RunManager.hh"
 #include "G4LogicalVolume.hh"
 #include "SimConfig.hh"
+#include "G4OpticalPhoton.hh"
 
 namespace LZSim {
 SteppingAction::SteppingAction(EventAction* eventAction) : fEventAction(eventAction) {}
@@ -26,5 +27,11 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
            << step->GetPreStepPoint()->GetPosition().z() / mm << ") mm" << G4endl;
   }
   fEventAction->AddEdep(edepStep);
+
+  // New: Log photon positions if opticalphoton
+  if (step->GetTrack()->GetParticleDefinition() == G4OpticalPhoton::OpticalPhotonDefinition()) {
+    G4ThreeVector pos = step->GetPreStepPoint()->GetPosition();
+    G4cout << "Photon position: (" << pos.x() / mm << ", " << pos.y() / mm << ", " << pos.z() / mm << ") mm" << G4endl;
+  }
 }
-} // namespace LZSim
+}

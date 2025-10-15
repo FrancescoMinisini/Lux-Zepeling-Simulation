@@ -43,7 +43,8 @@ target_link_libraries(LZSim ${Geant4_LIBRARIES})
 set(LZSim_SCRIPTS
 macros/common_batch.mac
   macros/init_vis.mac
-  macros/run_s2.mac  # New macro for S2
+  macros/run_s2.mac
+  macros/vis_s2.mac
   macros/vis.mac
   )
 

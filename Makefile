@@ -51,6 +51,12 @@ s2: $(EXEC) | $(OUTPUTS_DIR)
 	@echo "==> Running S2 simulation"
 	@cd $(BUILD_DIR) && ./LZSim ../$(MACROS_DIR)/run_s2.mac > ../LOG.txt
 	@echo "==> Output: $(S2_ROOT)"
+vis: vis_s2
+
+vis_s2: $(EXEC) | $(OUTPUTS_DIR)
+	@echo "==> Running S2 simulation"
+	@cd $(BUILD_DIR) && ./LZSim ../$(MACROS_DIR)/vis_s2.mac > ../LOG.txt
+	@echo "==> Output: $(S2_ROOT)"
 
 analyze:
 	@echo "==> Analyzing for gaussian shape"
