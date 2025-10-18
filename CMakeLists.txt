@@ -43,6 +43,7 @@ target_link_libraries(Test ${Geant4_LIBRARIES})
 set(TEST_SCRIPTS
   macros/common_batch.mac
   macros/init_vis.mac
+  init_vis.mac
   macros/run_double_far.mac
   macros/run_double_near.mac
   macros/run_single.mac
